@@ -1,0 +1,8 @@
+prefix=/home/nathan/barista_ws/devel/.private/unr_deepspeech
+
+Name: unr_deepspeech
+Description: Description of unr_deepspeech
+Version: 0.0.1
+Cflags: -I/home/nathan/barista_ws/devel/.private/unr_deepspeech/include
+Libs: -L${prefix}/lib 
+Requires: 

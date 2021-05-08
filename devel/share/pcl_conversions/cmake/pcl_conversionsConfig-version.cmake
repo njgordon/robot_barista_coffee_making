@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/pcl_conversions/share/pcl_conversions/cmake/pcl_conversionsConfig-version.cmake

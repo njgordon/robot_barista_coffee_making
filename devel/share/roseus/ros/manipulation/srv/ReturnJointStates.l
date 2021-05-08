@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/manipulation/share/roseus/ros/manipulation/srv/ReturnJointStates.l

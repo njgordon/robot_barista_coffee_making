@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/roseus/ros/unr_deepspeech/manifest.l

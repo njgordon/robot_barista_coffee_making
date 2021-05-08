@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/lib/python2.7/dist-packages/unr_deepspeech/__init__.py

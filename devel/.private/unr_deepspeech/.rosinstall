@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/nathan/barista_ws/devel/.private/unr_deepspeech/setup.sh

@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/manipulation/lib/python2.7/dist-packages/manipulation/srv/__init__.py

@@ -1,0 +1,8 @@
+prefix=/home/nathan/barista_ws/install
+
+Name: unr_deepspeech
+Description: Description of unr_deepspeech
+Version: 0.0.1
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib 
+Requires: 

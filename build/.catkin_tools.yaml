@@ -1,0 +1,6 @@
+devel_space: /home/nathan/barista_ws/devel
+install: false
+install_space: /home/nathan/barista_ws/install
+profile: default
+source_space: /home/nathan/barista_ws/src
+workspace: /home/nathan/barista_ws

@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/manipulation/share/gennodejs/ros/manipulation/srv/ReturnJointStates.js

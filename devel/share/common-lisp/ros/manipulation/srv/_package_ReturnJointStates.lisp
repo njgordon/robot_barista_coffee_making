@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/manipulation/share/common-lisp/ros/manipulation/srv/_package_ReturnJointStates.lisp

@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/perception/lib/pkgconfig/perception.pc

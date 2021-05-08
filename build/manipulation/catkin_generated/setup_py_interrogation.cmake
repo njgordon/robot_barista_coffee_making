@@ -1,0 +1,7 @@
+set(manipulation_SETUP_PY_SETUP_MODULE "distutils.core")
+set(manipulation_SETUP_PY_VERSION "0.0.0")
+set(manipulation_SETUP_PY_SCRIPTS "")
+set(manipulation_SETUP_PY_PACKAGES "manipulation")
+set(manipulation_SETUP_PY_PACKAGE_DIRS "src/manipulation")
+set(manipulation_SETUP_PY_MODULES "")
+set(manipulation_SETUP_PY_MODULE_DIRS "")

@@ -1,0 +1,6 @@
+Linked: (/home/nathan/barista_ws/devel/.private/perception/lib/perception/bj_vision, /home/nathan/barista_ws/devel/lib/perception/bj_vision)
+Linked: (/home/nathan/barista_ws/devel/.private/perception/lib/perception/bb_vision, /home/nathan/barista_ws/devel/lib/perception/bb_vision)
+Linked: (/home/nathan/barista_ws/devel/.private/perception/lib/perception/pcl_node, /home/nathan/barista_ws/devel/lib/perception/pcl_node)
+Linked: (/home/nathan/barista_ws/devel/.private/perception/lib/pkgconfig/perception.pc, /home/nathan/barista_ws/devel/lib/pkgconfig/perception.pc)
+Linked: (/home/nathan/barista_ws/devel/.private/perception/share/perception/cmake/perceptionConfig.cmake, /home/nathan/barista_ws/devel/share/perception/cmake/perceptionConfig.cmake)
+Linked: (/home/nathan/barista_ws/devel/.private/perception/share/perception/cmake/perceptionConfig-version.cmake, /home/nathan/barista_ws/devel/share/perception/cmake/perceptionConfig-version.cmake)

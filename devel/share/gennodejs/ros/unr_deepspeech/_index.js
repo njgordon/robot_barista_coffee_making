@@ -1,0 +1,1 @@
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/gennodejs/ros/unr_deepspeech/_index.js
