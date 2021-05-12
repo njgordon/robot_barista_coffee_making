@@ -20,7 +20,6 @@ from control_msgs.msg import PointHeadAction, PointHeadGoal
 #from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 #from trajectory_msgs.msg import JointTrajectoryPoint
 import actionlib # also used for move_base to pose
-import tf2_ros
 # local modules for Fetch primitives
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
@@ -34,8 +33,8 @@ import numpy as np
 # Position and geometry global variables
 gripper_on_cup = 0.075
 table_height = 0.88
-table_pos = [1.0, 0, table_height/2]
-cup_pos = [0.8, 0, table_height+0.05] #initial pick location
+table_pos = [0.9, 0, table_height/2]
+cup_pos = [0.9, 0, table_height+0.05] #initial pick location
 grasp_angle = [0, 0 ,0]
 machine_location = [0.9, 0.5, table_height+0.05]
 
@@ -46,18 +45,18 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
-    robotPathPlanning = RobotPathPlanning()
-    gripper = FetchGripper()
+    #robotPathPlanning = RobotPathPlanning()
 
     #robotManipulation.arm.tuck_arm()
 
     # Movemments
-    #eef_pos = robotManipulation.pick_cup()
-    #eef_pos = robotManipulation.move_to_machine(eef_pos)
-    robotManipulation.arm.remove_constraints()
-    #robotManipulation.open_hatch(eef_pos)
+    eef_pos = robotManipulation.pick_cup()
+    eef_pos = robotManipulation.move_to_machine(eef_pos)
+    #robotManipulation.arm.remove_constraints()
+    robotManipulation.open_hatch(eef_pos)
 
-    #grip_loc = robotManipulation.curr_gripper_location()
+    #rospy.loginfo(eef_pos)
+    #(loc, orient) = robotManipulation.plan.curr_gripper_location()
 
 ############################################################################################################
 
@@ -70,7 +69,8 @@ def make_quat_object(euler_angles):
 ################------------- Robot planning Class -------------################
 class RobotPathPlanning(object):
     def __init__(self):
-        self.upright_constraints = Constraints()
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
         # Create the scene
         self.planning_scene = PlanningSceneInterface("base_link")
@@ -78,36 +78,26 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("cup_1")
         self.planning_scene.removeAttachedObject('gripped_cup')
         self.planning_scene.removeCollisionObject("gripped_cup")
-        
+        self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
+
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, table_height, table_pos[0], table_pos[1], table_pos[2])
         #self.planning_scene.addBox("table", 0.6, 1.0, 0.15 + (table_pos[2]*2), table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
-        
-    def init_upright_constraint(self,pose):
-        self.upright_constraints.name = "upright"
-        orientation_constraint = OrientationConstraint()
-        #orientation_constraint.header = pose.header
-        orientation_constraint.link_name = 'gripper_link'
-        orientation_constraint.orientation = pose.orientation
-        orientation_constraint.absolute_x_axis_tolerance = 0.4
-        orientation_constraint.absolute_y_axis_tolerance = 0.4
-        orientation_constraint.absolute_z_axis_tolerance = 0.4
-        orientation_constraint.weight = 1
-        self.upright_constraints.orientation_constraints.append(orientation_constraint)
     
     def curr_gripper_location(self):
         location = [0]*3
         orientation = [0]*4
         rate = rospy.Rate(10.0)
-        # TODO: create loop to wait for transform
-        try:
-            gripper_transfrom = self.tfBuffer.lookup_transform('gripper_link','base_link',rospy.Time())
-        except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            rospy.loginfo(e)
-            rate.sleep()
+        while not rospy.is_shutdown():
+            try:
+                gripper_transfrom = self.tfBuffer.lookup_transform('base_link','gripper_link',rospy.Time())
+                break
+            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+                raise
+                rate.sleep()
+                continue
 
-        rospy.loginfo(gripper_transfrom)
         location[0] = gripper_transfrom.transform.translation.x
         location[1] = gripper_transfrom.transform.translation.y
         location[2] = gripper_transfrom.transform.translation.z
@@ -115,7 +105,9 @@ class RobotPathPlanning(object):
         orientation[0] = gripper_transfrom.transform.rotation.x
         orientation[1] = gripper_transfrom.transform.rotation.y
         orientation[2] = gripper_transfrom.transform.rotation.z
-        orientation[3] = gripper_transfrom.transform.rotation.w
+        orientation[3] = gripper_transfrom.transform.rotation.w 
+        rospy.loginfo(location)
+
         return location, orientation
 
 ################------------- Robot manipulation Class -------------################
@@ -124,8 +116,23 @@ class RobotManipulation(object):
         self.arm = FetchArm()
         self.head = FetchHead()
         self.plan = RobotPathPlanning()
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
+        self.constraint = Constraints()
+        self.orientation_constraint = OrientationConstraint()
+
+    def init_upright_constraint(self,pose):
+        self.constraint.name = "upright constraint"
+        #self.upright_constraints.name = "upright"
+
+        #orientation_constraint.header = pose.header
+        self.orientation_constraint.link_name = "gripper_link"
+        self.orientation_constraint.header.frame_id = "base_link"
+        self.orientation_constraint.orientation = pose.orientation
+        self.orientation_constraint.absolute_x_axis_tolerance = 0.2
+        self.orientation_constraint.absolute_y_axis_tolerance = 0.2
+        self.orientation_constraint.absolute_z_axis_tolerance = 0.2
+        self.orientation_constraint.weight = 1
+        self.arm.move_commander.set_path_constraints(self.constraint)
+        #self.upright_constraints.orientation_constraints.append(orientation_constraint)
 
     # Function to pick up a cup
     def pick_cup(self):
@@ -178,18 +185,19 @@ class RobotManipulation(object):
                         make_quat_object(grasp_angle)) 
         self.arm.move_gripper_to_pose(cup_pre_grasp_pose)
         rospy.loginfo("Pre-grasp")
-        rospy.sleep(1)
+
 
         # Planning scene updates
         #self.planning_scene.removeCollisionObject("table")
         #self.planning_scene.addBox("table", 0.7, 2.0, (table_pos[2]*2), table_pos[0], table_pos[1], table_pos[2])
         self.plan.planning_scene.removeCollisionObject("cup_1")
+        rospy.sleep(1)
 
         # Approach
         rospy.loginfo("Approach")
         eef_pos[0] = cup_pos[0]
         eef_pos[1] = cup_pos[1]
-        eef_pos[2] = cup_pos[2]
+        eef_pos[2] = cup_pos[2] + z_offset
         cup_grasp_pose = Pose( Point(eef_pos[0], 
                         eef_pos[1], 
                         eef_pos[2]), 
@@ -207,7 +215,7 @@ class RobotManipulation(object):
         #self.planning_scene.addBox("avoid_objects", 0.05, cup_pos-cup2_pos, objects_height, cup_pos[1], cup2_pos[1], cup2_pos[2])
 
         # Lift up and back
-        eef_pos[0]-=0.1
+        eef_pos[0]-=0.2
         eef_pos[2]+=0.1
         move_up_pose = Pose( Point(eef_pos[0], 
                         eef_pos[1], 
@@ -216,12 +224,9 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(move_up_pose)
 
         return eef_pos
-      
         
     def move_to_machine(self,eef_pos):
         rospy.loginfo("Move to machine")
-
-        self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
 
         # Move accross to machine
         eef_pos[1]+=0.5
@@ -230,12 +235,12 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 make_quat_object(grasp_angle)) 
 
-        self.plan.init_upright_constraint(move_across)
+        self.init_upright_constraint(move_across)
         self.arm.move_gripper_to_pose(move_across) # constrain gripper facing up
         rospy.sleep(1)
 
         # move down
-        eef_pos[2]-=0.05
+        eef_pos[2]-=0.06
         move_down=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -244,7 +249,7 @@ class RobotManipulation(object):
         
         # move forward
         self.plan.planning_scene.removeCollisionObject("Machine")
-        eef_pos[0]+=0.1
+        eef_pos[0]+=0.14
         place_cup=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -259,7 +264,7 @@ class RobotManipulation(object):
         rospy.sleep(2)
 
         # move gripper back
-        eef_pos[0]-=0.2
+        eef_pos[0]-=0.05
         retreat_machine=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -273,21 +278,31 @@ class RobotManipulation(object):
 
         # Tilt gripper and move to hatch
         grasp_angle = [np.deg2rad(90),0,0]
-        eef_pos[2]+=0.1
+        eef_pos[2]+=0.16
         tilt_grip=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 make_quat_object(grasp_angle)) 
         self.arm.move_gripper_to_pose(tilt_grip)   
+        rospy.sleep(1)
 
-        # Lift up and forward to open hatch
+        #forward
         eef_pos[0]+=0.05
-        eef_pos[2]+=0.05
+        #eef_pos[2]+=0.03
         hatch_pose=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 make_quat_object(grasp_angle)) 
         self.arm.move_gripper_to_pose(hatch_pose)   
+        rospy.sleep(1)
+
+        #self.arm.gripper.close_gripper(0.05)
+        grasp_angle = [np.deg2rad(90),np.deg2rad(-10),0]
+        hatch_pose=Pose( Point(eef_pos[0], 
+                eef_pos[1], 
+                eef_pos[2]), 
+                make_quat_object(grasp_angle)) 
+        self.arm.move_gripper_to_pose(hatch_pose) 
 
 if __name__ == '__main__':
     main()
