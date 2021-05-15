@@ -52,11 +52,15 @@ def main():
     # Movemments
     eef_pos = robotManipulation.pick_cup()
     eef_pos = robotManipulation.move_to_machine(eef_pos)
+
+    #(eef_pos, orient) = robotManipulation.plan.curr_gripper_location()
+
+    robotManipulation.push_button(eef_pos)
     #robotManipulation.arm.remove_constraints()
-    robotManipulation.open_hatch(eef_pos)
+    #robotManipulation.open_hatch(eef_pos)
 
     #rospy.loginfo(eef_pos)
-    #(loc, orient) = robotManipulation.plan.curr_gripper_location()
+    
 
 ############################################################################################################
 
@@ -76,8 +80,6 @@ class RobotPathPlanning(object):
         self.planning_scene = PlanningSceneInterface("base_link")
         self.planning_scene.removeCollisionObject("table")
         self.planning_scene.removeCollisionObject("cup_1")
-        self.planning_scene.removeAttachedObject('gripped_cup')
-        self.planning_scene.removeCollisionObject("gripped_cup")
         self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
 
         # Add objects
@@ -94,7 +96,7 @@ class RobotPathPlanning(object):
                 gripper_transfrom = self.tfBuffer.lookup_transform('base_link','gripper_link',rospy.Time())
                 break
             except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                raise
+                #raise
                 rate.sleep()
                 continue
 
@@ -116,13 +118,13 @@ class RobotManipulation(object):
         self.arm = FetchArm()
         self.head = FetchHead()
         self.plan = RobotPathPlanning()
-        self.constraint = Constraints()
+        self.constraints = Constraints()
         self.orientation_constraint = OrientationConstraint()
 
     def init_upright_constraint(self,pose):
-        self.constraint.name = "upright constraint"
-        #self.upright_constraints.name = "upright"
-
+        #self.constraint.name = "upright constraint"
+        self.constraints.name = "upright"
+        
         #orientation_constraint.header = pose.header
         self.orientation_constraint.link_name = "gripper_link"
         self.orientation_constraint.header.frame_id = "base_link"
@@ -131,9 +133,32 @@ class RobotManipulation(object):
         self.orientation_constraint.absolute_y_axis_tolerance = 0.2
         self.orientation_constraint.absolute_z_axis_tolerance = 0.2
         self.orientation_constraint.weight = 1
-        self.arm.move_commander.set_path_constraints(self.constraint)
-        #self.upright_constraints.orientation_constraints.append(orientation_constraint)
+        
+        self.constraints.orientation_constraints.append(self.orientation_constraint)
+        self.arm.move_commander.set_path_constraints(self.constraints)
+        rospy.loginfo(self.arm.move_commander.get_path_constraints())
 
+    def push_button(self, eef_pos):
+
+        # Pre-button
+        eef_pos[0]+=0.15
+        eef_pos[1]-=0.2
+        eef_pos[2]+=0.1
+        grasp_angle=[np.deg2rad(-45),0,0]
+        pre_button_pose = Pose( Point(eef_pos[0], 
+                eef_pos[1], 
+                eef_pos[2]), 
+                make_quat_object(grasp_angle)) 
+        self.arm.move_gripper_to_pose(pre_button_pose)
+        rospy.sleep(1)
+        
+        # Push button
+        wrist_flex = self.arm.getJointPosition('wrist_flex_joint')
+        roll = np.deg2rad(10)
+        wrist_flex+=roll
+        self.arm.move_joint('wrist_flex_joint',wrist_flex)
+
+        
     # Function to pick up a cup
     def pick_cup(self):
         
@@ -264,7 +289,7 @@ class RobotManipulation(object):
         rospy.sleep(2)
 
         # move gripper back
-        eef_pos[0]-=0.05
+        eef_pos[0]-=0.2
         retreat_machine=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -272,6 +297,9 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(retreat_machine)   
         rospy.sleep(1)
 
+        # Add machine back
+        self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
+       
         return eef_pos
 
     def open_hatch(self,eef_pos):

@@ -36,7 +36,7 @@ class FetchArm(object):
     MAX_TORSO = 0.4
     MIN_TORSO = 0.15
     tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
-    MAX_VELOCITY_SCALING_FACTOR = 0.2
+    MAX_VELOCITY_SCALING_FACTOR = 0.5
 
     # init adapted from Fetch manual
     def __init__(self):
@@ -154,33 +154,7 @@ class FetchArm(object):
                 rospy.logerr("Arm goal in state: %s",
                     self.move_group.get_move_action().get_state())
         else:
-            rospy.logerr("MoveIt! failure no result returned.")      
-
-    def preGrasp_pose(self):
-        #self.move_torso(self.MAX_TORSO)
-        #rospy.sleep(1)
-        #self.ready_arm_pos[0] = 0.2
-
-        self.move_group.moveToJointPosition(self.joints_name, self.pregrasp_arm_pos, wait=True, max_velocity_scaling_factor=self.MAX_VELOCITY_SCALING_FACTOR)
-        
-        # Since we passed in wait=False above we need to wait here
-        self.move_group.get_move_action().wait_for_result()
-        result = self.move_group.get_move_action().get_result()
-
-        rospy.sleep(1)
-
-        # TODO refactor result logging from all primitives
-        if result:
-            # Checking the MoveItErrorCode
-            if result.error_code.val == MoveItErrorCodes.SUCCESS:
-                rospy.loginfo("Pre-grasp Pose")
-            else:
-                # If you get to this point please search for:
-                # moveit_msgs/MoveItErrorCodes.msg
-                rospy.logerr("Arm goal in state: %s",
-                    self.move_group.get_move_action().get_state())
-        else:
-            rospy.logerr("MoveIt! failure no result returned.")        
+            rospy.logerr("MoveIt! failure no result returned.")            
 
     # Primitive: tuck_arm - reset arm to idle pose
     def tuck_arm(self, parameters={}):
@@ -452,49 +426,7 @@ class FetchArm(object):
         self.__place_object(place_pose, max_gripper_effort)
         self.tuck_arm()
 
-
-    def move_while_holding(self, parameters={}):
-
-        # "place_pose" co-ordinates for end-effector
-        try:
-            place_pose = parameters["move_pose"]
-            if type(place_pose).__name__ != 'Pose':
-                raise PoseError(place_pose)
-        except (ValueError, KeyError, PoseError) as e:
-            # Pose contains: Point position (x,y,z), Quaternion orientation (x,y,z,w)
-            # set to position low to ground on left
-
-            p = Point(0.53175, 0.65, 1.26782)
-            q = tf.transformations.quaternion_from_euler(np.pi, 0, 0)
-            q = Quaternion(q[0],q[1],q[2],q[3])
-
-            place_pose = Pose(p,q)
-            rospy.sleep(5)
-
-            # "max_gripper_effort" for close/open force of gripper
-            
-
-        self.__pick_object(place_pose, 0)
-        rospy.sleep(1)
     
-    def tilt_while_holding(self, parameters={}):
-        self.gripper.close_gripper(30)
-        # "place_pose" co-ordinates for end-effector
-        try:
-            place_pose = parameters["tilt_pose"]
-            if type(place_pose).__name__ != 'Pose':
-                raise PoseError(place_pose)
-        except (ValueError, KeyError, PoseError) as e:
-            # Pose contains: Point position (x,y,z), Quaternion orientation (x,y,z,w)
-            # set to position low to ground on left
-
-            p = Point(0.53175, 0.65, 1.26782)
-            q = tf.transformations.quaternion_from_euler(np.pi/2, 0, 0)
-            q = Quaternion(q[0],q[1],q[2],q[3])
-            place_pose = Pose(p,q)
-
-        self.__pick_object(place_pose, 0)
-        rospy.sleep(1)
     
 
 

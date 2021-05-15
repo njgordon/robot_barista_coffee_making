@@ -1,0 +1,22 @@
+unr_deepspeech
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/cmake.lock /home/nathan/barista_ws/devel/./cmake.lock
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/lib/python2.7/dist-packages/unr_deepspeech/__init__.py /home/nathan/barista_ws/devel/lib/python2.7/dist-packages/unr_deepspeech/__init__.py
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/lib/python2.7/dist-packages/unr_deepspeech/srv/__init__.py /home/nathan/barista_ws/devel/lib/python2.7/dist-packages/unr_deepspeech/srv/__init__.py
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/lib/python2.7/dist-packages/unr_deepspeech/srv/_Listen.py /home/nathan/barista_ws/devel/lib/python2.7/dist-packages/unr_deepspeech/srv/_Listen.py
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/lib/pkgconfig/unr_deepspeech.pc /home/nathan/barista_ws/devel/lib/pkgconfig/unr_deepspeech.pc
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/include/unr_deepspeech/Listen.h /home/nathan/barista_ws/devel/include/unr_deepspeech/Listen.h
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/include/unr_deepspeech/ListenResponse.h /home/nathan/barista_ws/devel/include/unr_deepspeech/ListenResponse.h
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/include/unr_deepspeech/ListenRequest.h /home/nathan/barista_ws/devel/include/unr_deepspeech/ListenRequest.h
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/gennodejs/ros/unr_deepspeech/_index.js /home/nathan/barista_ws/devel/share/gennodejs/ros/unr_deepspeech/_index.js
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/gennodejs/ros/unr_deepspeech/srv/_index.js /home/nathan/barista_ws/devel/share/gennodejs/ros/unr_deepspeech/srv/_index.js
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/gennodejs/ros/unr_deepspeech/srv/Listen.js /home/nathan/barista_ws/devel/share/gennodejs/ros/unr_deepspeech/srv/Listen.js
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/roseus/ros/unr_deepspeech/manifest.l /home/nathan/barista_ws/devel/share/roseus/ros/unr_deepspeech/manifest.l
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/roseus/ros/unr_deepspeech/srv/Listen.l /home/nathan/barista_ws/devel/share/roseus/ros/unr_deepspeech/srv/Listen.l
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/unr_deepspeech/cmake/unr_deepspeech-msg-extras.cmake /home/nathan/barista_ws/devel/share/unr_deepspeech/cmake/unr_deepspeech-msg-extras.cmake
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/unr_deepspeech/cmake/unr_deepspeechConfig.cmake /home/nathan/barista_ws/devel/share/unr_deepspeech/cmake/unr_deepspeechConfig.cmake
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/unr_deepspeech/cmake/unr_deepspeechConfig-version.cmake /home/nathan/barista_ws/devel/share/unr_deepspeech/cmake/unr_deepspeechConfig-version.cmake
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/unr_deepspeech/cmake/unr_deepspeech-msg-paths.cmake /home/nathan/barista_ws/devel/share/unr_deepspeech/cmake/unr_deepspeech-msg-paths.cmake
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/common-lisp/ros/unr_deepspeech/srv/unr_deepspeech-srv.asd /home/nathan/barista_ws/devel/share/common-lisp/ros/unr_deepspeech/srv/unr_deepspeech-srv.asd
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/common-lisp/ros/unr_deepspeech/srv/Listen.lisp /home/nathan/barista_ws/devel/share/common-lisp/ros/unr_deepspeech/srv/Listen.lisp
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/common-lisp/ros/unr_deepspeech/srv/_package.lisp /home/nathan/barista_ws/devel/share/common-lisp/ros/unr_deepspeech/srv/_package.lisp
+/home/nathan/barista_ws/devel/.private/unr_deepspeech/share/common-lisp/ros/unr_deepspeech/srv/_package_Listen.lisp /home/nathan/barista_ws/devel/share/common-lisp/ros/unr_deepspeech/srv/_package_Listen.lisp
