@@ -8,6 +8,8 @@
 
 # modified environment variables
 export CMAKE_PREFIX_PATH="/home/nathan/barista_ws/devel/.private/darknet_ros:$CMAKE_PREFIX_PATH"
+export LD_LIBRARY_PATH="/home/nathan/barista_ws/devel/.private/darknet_ros/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="/home/nathan/barista_ws/devel/.private/darknet_ros/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PWD='/home/nathan/barista_ws/build/darknet_ros'
 export ROSLISP_PACKAGE_DIRECTORIES="/home/nathan/barista_ws/devel/.private/darknet_ros/share/common-lisp:$ROSLISP_PACKAGE_DIRECTORIES"
 export ROS_PACKAGE_PATH="/home/nathan/barista_ws/src/darknet_ros/darknet_ros:$ROS_PACKAGE_PATH"

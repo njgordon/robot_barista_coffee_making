@@ -9,6 +9,7 @@
 # modified environment variables
 export CMAKE_PREFIX_PATH="/home/nathan/barista_ws/devel/.private/manipulation:$CMAKE_PREFIX_PATH"
 export LD_LIBRARY_PATH="/home/nathan/barista_ws/devel/.private/manipulation/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="/home/nathan/barista_ws/devel/.private/manipulation/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PWD='/home/nathan/barista_ws/build/manipulation'
 export PYTHONPATH="/home/nathan/barista_ws/devel/.private/manipulation/lib/python2.7/dist-packages:$PYTHONPATH"
 export ROSLISP_PACKAGE_DIRECTORIES="/home/nathan/barista_ws/devel/.private/manipulation/share/common-lisp:$ROSLISP_PACKAGE_DIRECTORIES"

@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 # standard ROS imports
+from __future__ import print_function
 import sys
+import copy
 import time
 import math
-#from copy import copy #move_head by joint angle
 import rospy
 from std_msgs.msg import ColorRGBA, Float32
+from six.moves import input
 
 # move_arm imports
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
@@ -17,7 +19,9 @@ from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 import moveit_commander
 import moveit_msgs.msg
 from sensor_msgs.msg import Joy
+import sensor_msgs.msg
 
+import visualization_msgs.msg
 import actionlib
 import numpy as np
 #from scipy.spatial.transform import Rotation
@@ -34,7 +38,7 @@ import numpy as np
 class FetchArm(object):
 
     MAX_TORSO = 0.4
-    MIN_TORSO = 0.15
+    MIN_TORSO = 0
     tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
     MAX_VELOCITY_SCALING_FACTOR = 0.5
 
@@ -60,9 +64,19 @@ class FetchArm(object):
         self.planning_scene.addBox("ground_keepout", 1.5, 1.5, 0.02, 0.0, 0.0, -0.012)
         self.planning_scene.addBox("base_keepout", 0.2, 0.5, 0.001, 0.15, 0.0, 0.368)
 
+        moveit_commander.roscpp_initialize(sys.argv)
         self.move_group = MoveGroupInterface("arm_with_torso", "base_link")
-        self.move_commander = moveit_commander.MoveGroupCommander("arm")
+        self.move_commander = moveit_commander.MoveGroupCommander("arm_with_torso")
+        self.robot = moveit_commander.RobotCommander()
         self.pick_place = PickPlaceInterface("arm", "gripper")
+        
+        # Create a publisher to visualize the position constraints in Rviz
+        self.marker_publisher = rospy.Publisher(
+            "/visualization_marker", visualization_msgs.msg.Marker, queue_size=20,
+        )
+        rospy.sleep(0.5)  # publisher needs some time to context Rviz
+        self.remove_all_markers()
+        self.marker_id_counter = 0  # give each marker a unique idea
 
         # create a gripper object
         self.gripper = FetchGripper()
@@ -73,6 +87,47 @@ class FetchArm(object):
         self.joy_sub = rospy.Subscriber("joy", Joy, self.joy_callback)
 
         rospy.loginfo("Fetch move arm initialised")
+
+    def remove_all_markers(self):
+        """ Utility function to remove all Markers that we potentially published in a previous run of this script. """
+        # setup cube / box marker type
+        marker = visualization_msgs.msg.Marker()
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = "/"
+        # marker.id = 0
+        # marker.type = visualization_msgs.msg.Marker.CUBE
+        marker.action = visualization_msgs.msg.Marker.DELETEALL
+        self.marker_publisher.publish(marker)
+
+    def create_start_state(self):
+        """ Create a RobotState message from a named joint target for this robot. """
+        ready = self.move_commander.get_named_target_values("ready")
+
+        # Now create a robot state from these joint positions
+        joint_state = sensor_msgs.msg.JointState()
+        joint_state.header.stamp = rospy.Time.now()
+        joint_state.header.frame_id = self.move_commander.get_pose_reference_frame()
+        joint_state.name = [key for key in ready.keys()]
+        joint_state.position = [val for val in ready.values()]
+
+        #state = moveit_msgs.msg.RobotState()
+        #state.joint_state = joint_state
+        state = self.move_commander.get_current_state()
+        rospy.loginfo(state)
+        return state
+
+    def solve(self, pose_goal, path_constraints):
+        # Clear the path constraints 
+        self.move_commander.clear_path_constraints()
+        
+        self.move_commander.set_pose_target(pose_goal,"gripper_link")
+
+        # Don't forget the path constraints! That's the whole point of this tutorial.
+        self.move_commander.set_path_constraints(path_constraints)
+
+        # And let the planner find a solution.
+        # The move_group node should autmatically visualize the solution in Rviz if a path is found.
+        return self.move_commander.plan()
 
     def joy_callback(self, msg):
         if msg.buttons[self.deadman] > 0:
@@ -128,33 +183,7 @@ class FetchArm(object):
         self.move_group.get_move_action().cancel_all_goals()
 
     def remove_constraints(self):
-        self.move_commander.clear_path_constraints()
-
-    def ready_pose(self):
-        self.move_torso(self.MAX_TORSO)
-        rospy.sleep(1)
-        #self.ready_arm_pos[0] = 0.2
-
-        self.move_group.moveToJointPosition(self.joints_name, self.ready_arm_pos, wait=True, max_velocity_scaling_factor=self.MAX_VELOCITY_SCALING_FACTOR)
-        
-        # Since we passed in wait=False above we need to wait here
-        self.move_group.get_move_action().wait_for_result()
-        result = self.move_group.get_move_action().get_result()
-
-        rospy.sleep(1)
-
-        # TODO refactor result logging from all primitives
-        if result:
-            # Checking the MoveItErrorCode
-            if result.error_code.val == MoveItErrorCodes.SUCCESS:
-                rospy.loginfo("Ready pose successfull")
-            else:
-                # If you get to this point please search for:
-                # moveit_msgs/MoveItErrorCodes.msg
-                rospy.logerr("Arm goal in state: %s",
-                    self.move_group.get_move_action().get_state())
-        else:
-            rospy.logerr("MoveIt! failure no result returned.")            
+        self.move_commander.clear_path_constraints()     
 
     # Primitive: tuck_arm - reset arm to idle pose
     def tuck_arm(self, parameters={}):
@@ -211,60 +240,6 @@ class FetchArm(object):
             reverse = Falseto
         if reverse==True:
             pose_list.reverse()
-
-    # Primitive: wave - 'Wave' the fetch gripper
-    # Adapted from Fetch manual tutorial
-    def wave(self, parameters={}):
-        # This is the wrist link not the gripper itself
-        gripper_frame = 'wrist_roll_link'
-        # Position and rotation of two "wave end poses"
-        gripper_poses = [Pose(Point(0.042, 0.384, 1.826),
-                            Quaternion(0.173, -0.693, -0.242, 0.657)),
-                        Pose(Point(0.047, 0.545, 1.822),
-                            Quaternion(-0.274, -0.701, 0.173, 0.635))]
-
-        # Construct a "pose_stamped" message as required by moveToPose
-        gripper_pose_stamped = PoseStamped()
-        gripper_pose_stamped.header.frame_id = 'base_link'
-
-        # TODO refactor setting params to default
-        # repeats primitive for the number specificed by "repeat" param
-        try:
-            repeat = int(parameters["repeat"])
-        except (ValueError, KeyError) as e:
-            repeat = 1
-
-        self.reverse_order_if_param_set(gripper_poses, parameters)
-
-        for x in range(repeat):
-            for pose in gripper_poses:
-                if rospy.is_shutdown():
-                    break
-
-                # Finish building the Pose_stamped message
-                # If the message stamp is not current it could be ignored
-                gripper_pose_stamped.header.stamp = rospy.Time.now()
-                # Set the message pose
-                gripper_pose_stamped.pose = pose
-
-                # Move gripper frame to the pose specified
-                self.move_group.moveToPose(gripper_pose_stamped, gripper_frame, max_velocity_scaling_factor=self.MAX_VELOCITY_SCALING_FACTOR)
-                result = self.move_group.get_move_action().get_result()
-
-                # TODO refactor result logging from all primitives
-                if result:
-                    # Checking the MoveItErrorCode
-                    if result.error_code.val == MoveItErrorCodes.SUCCESS:
-                        rospy.loginfo("Wave #%s successful!", x+1)
-                    else:
-                        # If you get to this point please search for:
-                        # moveit_msgs/MoveItErrorCodes.msg
-                        rospy.logerr("Arm goal in state: %s",
-                            self.move_group.get_move_action().get_state())
-                else:
-                    rospy.logerr("MoveIt! failure no result returned.")
-
-        return "success"
 
     # Primitive: move torso - fetch moves torso up and down
     def move_torso(self, torso_pose):
@@ -355,79 +330,6 @@ class FetchArm(object):
 
         return "success"
         rospy.loginfo("Hand location moved")
-    
-    def pick(self, grasp, object_name, support_name):
-
-        self.pick_place.pickup(object_name, [grasp, ], support_name = support_name)
-
-    def place(self, parameters={}):
-
-        # "pick_pose" Pose with co-ordinates(point) and orientation(quaternion) for end-effector
-        try:
-            pick_pose = parameters["place_pose"]
-            if type(pick_pose).__name__ != 'Pose':
-                raise PoseError(pick_pose)
-        except (ValueError, KeyError, PoseError) as e:
-            # Pose contains: Point position (x,y,z), Quaternion orientation (x,y,z,w)
-            # set to position on Fetch's left side above head
-            p = Point(0.53175, 0.71032, 1.26782)
-            q = tf.transformations.quaternion_from_euler(np.pi, 0, 0)
-
-            q = Quaternion(q[0],q[1],q[2],q[3])
-
-            pick_pose = Pose(p,q)
-
-        self.__place_object(pick_pose, 0)
-    
-    # Primitive: pick_and_place - fetch moves arm to a pick pose (close gripper)
-    # then moves arm to a place pose (open gripper)
-    # Default: pick from pose on Fetch's left side above head
-    # place low to ground on left
-    def pick_and_place(self, parameters={}):
-
-        # "pick_pose" Pose with co-ordinates(point) and orientation(quaternion) for end-effector
-        try:
-            pick_pose = parameters["pick_pose"]
-            if type(pick_pose).__name__ != 'Pose':
-                raise PoseError(pick_pose)
-        except (ValueError, KeyError, PoseError) as e:
-            p = Point(0.53175, 0.71032, 1.26782)
-            q = tf.transformations.quaternion_from_euler(np.pi/2, 0, 0)
-            q = Quaternion(q[0],q[1],q[2],q[3])
-            pick_pose = Pose(p,q)
-
-        # "place_pose" co-ordinates for end-effector
-        try:
-            place_pose = parameters["place_pose"]
-            if type(place_pose).__name__ != 'Pose':
-                raise PoseError(place_pose)
-        except (ValueError, KeyError, PoseError) as e:
-            # Pose contains: Point position (x,y,z), Quaternion orientation (x,y,z,w)
-            # set to position low to ground on left
-            p = Point(0.53175, 0.71032, 1.26782)
-            q = tf.transformations.quaternion_from_euler(np.pi, 0, 0)
-            q = Quaternion(q[0],q[1],q[2],q[3])
-            # q = quaternion_from_euler(np.pi, 0, 0)
-            #q = Quaternion(0.90357, 0.11173, -0.39944, -0.10731)
-            place_pose = Pose(p,q)
-            #place_pose = Pose((0.53175, 0.71032, 1.26782,np.pi, 0, 0))
-
-        # "max_gripper_effort" for close/open force of gripper
-        try:
-            max_gripper_effort = float(parameters["max_gripper_effort"])
-        except (ValueError, KeyError) as e:
-            max_gripper_effort = FetchGripper.MAX_EFFORT
-        if max_gripper_effort < 0.0:
-            max_gripper_effort = 0.0
-        if max_gripper_effort > FetchGripper.MAX_EFFORT:
-            max_gripper_effort = FetchGripper.MAX_EFFORT
-
-        self.__pick_object(pick_pose, max_gripper_effort)
-        self.__place_object(place_pose, max_gripper_effort)
-        self.tuck_arm()
-
-    
-    
 
 
 # contains control for Fetch's gripper
