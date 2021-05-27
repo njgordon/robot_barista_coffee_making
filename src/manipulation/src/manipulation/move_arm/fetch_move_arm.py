@@ -9,6 +9,13 @@ import math
 import rospy
 from std_msgs.msg import ColorRGBA, Float32
 from six.moves import input
+import visualization_msgs.msg
+import actionlib
+import numpy as np
+import tf2_ros
+import tf
+import tf_conversions
+from tuck_arm import TuckThread
 
 # move_arm imports
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
@@ -20,21 +27,8 @@ import moveit_commander
 import moveit_msgs.msg
 from sensor_msgs.msg import Joy
 import sensor_msgs.msg
-
-import visualization_msgs.msg
-import actionlib
-import numpy as np
-#from scipy.spatial.transform import Rotation
-import tf2_ros
-import tf
-import tf_conversions
-from tf import transformations
-from tuck_arm import TuckThread
 from manipulation.srv import *
 
-import numpy as np
-
-#from tf.transforms import *
 class FetchArm(object):
 
     MAX_TORSO = 0.4
@@ -74,13 +68,14 @@ class FetchArm(object):
         self.marker_publisher = rospy.Publisher(
             "/visualization_marker", visualization_msgs.msg.Marker, queue_size=20,
         )
-        rospy.sleep(0.5)  # publisher needs some time to context Rviz
+        rospy.sleep(0.5)  # publisher needs some time to contect Rviz
         self.remove_all_markers()
         self.marker_id_counter = 0  # give each marker a unique idea
 
         # create a gripper object
         self.gripper = FetchGripper()
 
+        # check for controller input
         self.pressed = False
         self.pressed_last = None
         self.deadman = rospy.get_param("~deadman_button", 10)
@@ -116,13 +111,13 @@ class FetchArm(object):
         rospy.loginfo(state)
         return state
 
-    def solve(self, pose_goal, path_constraints):
+    def solve_path_plan(self, pose_goal, path_constraints):
         # Clear the path constraints 
         self.move_commander.clear_path_constraints()
         
         self.move_commander.set_pose_target(pose_goal,"gripper_link")
 
-        # Don't forget the path constraints! That's the whole point of this tutorial.
+        # Don't forget the path constraints!
         self.move_commander.set_path_constraints(path_constraints)
 
         # And let the planner find a solution.
@@ -306,7 +301,6 @@ class FetchArm(object):
                 # Set the message pose
                 gripper_pose_stamped.pose = pose
                 # Move gripper frame to the pose specified
-                rospy.loginfo("moveToPose")
                 self.move_group.moveToPose(gripper_pose_stamped, gripper_frame, max_velocity_scaling_factor=self.MAX_VELOCITY_SCALING_FACTOR)
                 self.move_group.get_move_action().wait_for_result()
                 result = self.move_group.get_move_action().get_result()
