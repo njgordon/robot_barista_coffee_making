@@ -60,6 +60,7 @@ gripper_on_cup = 0.075
 table_height = 1.05 #0.88
 table_pos = [1, 0, table_height/2]
 cup_pos = [0.9, 0, table_height+0.05] #initial pick location
+sugar_pos = [0.9,-0.5,table_height+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.5, table_height+0.05]
  
@@ -81,8 +82,11 @@ class RobotManipulation(object):
             self.arm.move_commander.get_current_pose().pose.position.z]
         return pos
 
-    def init_upright_constraint(self):
+    def init_upright_constraint(self,tolerance):
+        """ Initialise upright constraint with tolerance in degrees for all axes. """
+        self.arm.move_commander.clear_pose_targets()
 
+        tolerance = np.deg2rad(tolerance)
         start_pose = self.arm.move_commander.get_current_pose("gripper_link")
 
         self.arm.move_commander.set_planning_time(5)
@@ -93,9 +97,9 @@ class RobotManipulation(object):
         self.orientation_constraint.link_name = "gripper_link"
         self.orientation_constraint.header.frame_id = "base_link"
         self.orientation_constraint.orientation = euler_to_quat([0,0,0])
-        self.orientation_constraint.absolute_x_axis_tolerance = np.deg2rad(10)
-        self.orientation_constraint.absolute_y_axis_tolerance = np.deg2rad(10)
-        self.orientation_constraint.absolute_z_axis_tolerance = np.deg2rad(10)
+        self.orientation_constraint.absolute_x_axis_tolerance = tolerance
+        self.orientation_constraint.absolute_y_axis_tolerance = tolerance
+        self.orientation_constraint.absolute_z_axis_tolerance = tolerance
         self.orientation_constraint.weight = 1.0
         
         self.constraints.orientation_constraints.append(self.orientation_constraint)
@@ -150,7 +154,6 @@ class RobotManipulation(object):
         rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_pos[0], cup_pos[1], cup_pos[2])
 
         approach_distance = 0.10
-        lift_distance = 0.1
         z_offset = 0.05
 
         # Make sure gripper is open
@@ -200,7 +203,7 @@ class RobotManipulation(object):
         self.arm.move_torso(0.4)
 
         # Move back
-        self.init_upright_constraint()
+        self.init_upright_constraint(10)
         eef_pos[0]-=0.2
         self.cartesian_path(eef_pos[0])
         rospy.sleep(0.5)
@@ -218,12 +221,12 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        self.arm.move_commander.set_start_state_to_current_state()
+        #self.arm.move_commander.set_start_state_to_current_state()
 
         plan = self.arm.solve_path_plan(move_across,self.constraints)
 
         self.arm.move_commander.execute(plan)
-        self.arm.move_commander.clear_pose_targets()
+        #self.arm.move_commander.clear_pose_targets()
         rospy.sleep(0.5)
 
         # move down
@@ -262,10 +265,10 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(retreat_machine)   
         rospy.sleep(0.5)
 
-        # Add machine back
         #self.arm.move_commander.clear_path_constraints()
+        # Add machine back
         self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
-       
+        self.arm.move_commander.clear_path_constraints()
         return eef_pos
 
     def open_hatch(self):
@@ -339,6 +342,9 @@ class RobotManipulation(object):
         self.arm.move_joint('wrist_flex_joint',wrist_flex+roll)
         """
     def remove_cup_from_machine(self):
+        self.init_upright_constraint(10)
+        # TODO: Reduce velocity
+
         # Pre-approach
         eef_pos = [0.65, 0.5, 1.17]
         pre_cup_pose = Pose( Point(eef_pos[0], 
@@ -360,13 +366,52 @@ class RobotManipulation(object):
         self.arm.gripper.close_gripper(gripper_on_cup)
         rospy.sleep(1)
 
+        # Attach cup
+        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.08,0,0,0,'gripper_link')
+
         # move gripper back
-        eef_pos[0]-=0.1
+        eef_pos[0]-=0.2
         retreat_machine=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle))
         self.arm.move_gripper_to_pose(retreat_machine)   
+
+         # Add machine back
+        self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
+
+        # Move accross back to original position
+        eef_pos[1]-=0.5
+        move_across= Pose( Point(eef_pos[0], 
+                eef_pos[1], 
+                eef_pos[2]), 
+                euler_to_quat(grasp_angle)) 
+
+        plan = self.arm.solve_path_plan(move_across,self.constraints)
+        self.arm.move_commander.execute(plan)
+
+        rospy.sleep(0.5)
+
+        # Place back on table
+        eef_pos[0] = cup_pos[0] - 0.05
+        eef_pos[1] = cup_pos[1]
+        eef_pos[2] = cup_pos[2] + 0.05
+        cup_grasp_pose = Pose( Point(eef_pos[0], 
+                        eef_pos[1], 
+                        eef_pos[2]), 
+                        euler_to_quat(grasp_angle)) 
+        self.arm.move_gripper_to_pose(cup_grasp_pose)
+        #self.cartesian_path(eef_pos[0])
+
+        # TODO: lower torso slowly for placing cup, with coffee in it!
+
+        self.plan.planning_scene.removeAttachedObject('gripped_cup')
+        self.plan.planning_scene.removeCollisionObject('gripped_cup')
+       
+        # Move back
+        eef_pos[0]-=0.2
+        self.cartesian_path(eef_pos[0])
+        self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
 
 ################------------- Robot planning Class -----------------################
@@ -384,7 +429,9 @@ class RobotPathPlanning(object):
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, table_height, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
-   
+        self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
+
+#####################################################################################
 if __name__ == '__main__':
     main()
 

@@ -114,15 +114,20 @@ class FetchArm(object):
     def solve_path_plan(self, pose_goal, path_constraints):
         # Clear the path constraints 
         self.move_commander.clear_path_constraints()
-        
+        self.move_commander.clear_pose_targets()
+
+        self.move_commander.set_start_state_to_current_state
         self.move_commander.set_pose_target(pose_goal,"gripper_link")
 
-        # Don't forget the path constraints!
+        # Apply constraints
         self.move_commander.set_path_constraints(path_constraints)
 
         # And let the planner find a solution.
-        # The move_group node should autmatically visualize the solution in Rviz if a path is found.
-        return self.move_commander.plan()
+        self.move_commander.set_planning_time(5)
+
+        path = self.move_commander.plan()
+        # TODO: Read plan message and stop execution if not plan found
+        return path
 
     def joy_callback(self, msg):
         if msg.buttons[self.deadman] > 0:
@@ -225,7 +230,6 @@ class FetchArm(object):
         # Move torso down
         self.move_torso(self.MIN_TORSO)
         rospy.sleep(1)
-
 
     # Option: to reverse order of animation
     def reverse_order_if_param_set(self, pose_list, parameters):
