@@ -39,13 +39,11 @@ def main():
 
     robotManipulation.move_to_machine()
 
-    robotManipulation.push_button()
+    #robotManipulation.push_button()
     robotManipulation.remove_cup_from_machine()
 
-    #robotManipulation.arm.remove_constraints()
     #robotManipulation.open_hatch(eef_pos)
 
-    #rospy.loginfo(eef_pos)
     
 
 ################------------- Global Functions and variables -----------------################
@@ -70,10 +68,11 @@ class RobotManipulation(object):
         self.arm = FetchArm()
         self.head = FetchHead()
         self.plan = RobotPathPlanning()
-        self.constraints = moveit_msgs.msg.Constraints()
-        self.orientation_constraint = moveit_msgs.msg.OrientationConstraint()
-        self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
-        self.arm.move_commander.set_planning_time(5)
+
+        #self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
+        self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
+        self.arm.move_commander.set_planning_time(10)
+        self.arm.move_commander.allow_replanning(True)
 
     def get_eef_pos(self):
         pos = [
@@ -82,28 +81,31 @@ class RobotManipulation(object):
             self.arm.move_commander.get_current_pose().pose.position.z]
         return pos
 
-    def init_upright_constraint(self,tolerance):
+    def init_upright_constraint(self,tolerance_deg):
         """ Initialise upright constraint with tolerance in degrees for all axes. """
         self.arm.move_commander.clear_pose_targets()
+        self.arm.move_commander.clear_path_constraints()
+        orientation_constraint = moveit_msgs.msg.OrientationConstraint()
+        constraints = moveit_msgs.msg.Constraints()
 
-        tolerance = np.deg2rad(tolerance)
+        tolerance = np.deg2rad(tolerance_deg)
         start_pose = self.arm.move_commander.get_current_pose("gripper_link")
 
-        self.arm.move_commander.set_planning_time(5)
-        self.arm.move_commander.allow_replanning(True)
-        self.constraints.name = "upright"
+        constraints.name = "upright"
         self.arm.move_commander.set_pose_reference_frame("base_link")
-        self.orientation_constraint.header = start_pose.header
-        self.orientation_constraint.link_name = "gripper_link"
-        self.orientation_constraint.header.frame_id = "base_link"
-        self.orientation_constraint.orientation = euler_to_quat([0,0,0])
-        self.orientation_constraint.absolute_x_axis_tolerance = tolerance
-        self.orientation_constraint.absolute_y_axis_tolerance = tolerance
-        self.orientation_constraint.absolute_z_axis_tolerance = tolerance
-        self.orientation_constraint.weight = 1.0
+        orientation_constraint.header = start_pose.header
+        orientation_constraint.link_name = "gripper_link"
+        orientation_constraint.header.frame_id = "base_link"
+        orientation_constraint.orientation = euler_to_quat([0,0,0])
+        orientation_constraint.absolute_x_axis_tolerance = tolerance
+        orientation_constraint.absolute_y_axis_tolerance = tolerance
+        orientation_constraint.absolute_z_axis_tolerance = tolerance
+        orientation_constraint.weight = 1.0
         
-        self.constraints.orientation_constraints.append(self.orientation_constraint)
-        self.arm.move_commander.set_path_constraints(self.constraints)
+        constraints.orientation_constraints.append(orientation_constraint)
+        self.arm.move_commander.set_path_constraints(constraints)
+        rospy.loginfo("Upright constraint applied with %s deg tolerance",tolerance_deg)
+        #rospy.loginfo(self.arm.move_commander.get_path_constraints())
 
     def cartesian_path(self, x_pos):
         waypoints = []
@@ -120,7 +122,7 @@ class RobotManipulation(object):
         # We want the Cartesian path to be interpolated at a resolution of 1 cm
         # which is why we will specify 0.01 as the eef_step in Cartesian
         # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
-        self.arm.move_commander.allow_replanning(True)
+
         (plan, fraction) = self.arm.move_commander.compute_cartesian_path(
                                         waypoints,   # waypoints to follow
                                         0.01,        # eef_step
@@ -128,6 +130,7 @@ class RobotManipulation(object):
 
         rospy.loginfo("Waypoint fraction: %s",fraction)
         self.arm.move_commander.execute(plan,wait=True)
+
 
     ################------------- Manipulation functions -------------################
     def pick_cup(self):
@@ -221,9 +224,7 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        #self.arm.move_commander.set_start_state_to_current_state()
-
-        plan = self.arm.solve_path_plan(move_across,self.constraints)
+        plan = self.arm.solve_path_plan(move_across)
 
         self.arm.move_commander.execute(plan)
         #self.arm.move_commander.clear_pose_targets()
@@ -342,7 +343,9 @@ class RobotManipulation(object):
         self.arm.move_joint('wrist_flex_joint',wrist_flex+roll)
         """
     def remove_cup_from_machine(self):
-        self.init_upright_constraint(10)
+
+        self.init_upright_constraint(7)
+
         # TODO: Reduce velocity
 
         # Pre-approach
@@ -387,7 +390,7 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        plan = self.arm.solve_path_plan(move_across,self.constraints)
+        plan = self.arm.solve_path_plan(move_across)
         self.arm.move_commander.execute(plan)
 
         rospy.sleep(0.5)
@@ -433,7 +436,10 @@ class RobotPathPlanning(object):
 
 #####################################################################################
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass
 
 
 

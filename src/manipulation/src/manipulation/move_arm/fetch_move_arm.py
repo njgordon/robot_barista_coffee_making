@@ -111,21 +111,19 @@ class FetchArm(object):
         rospy.loginfo(state)
         return state
 
-    def solve_path_plan(self, pose_goal, path_constraints):
-        # Clear the path constraints 
-        self.move_commander.clear_path_constraints()
+    def solve_path_plan(self, pose_goal):
+        # Clear 
         self.move_commander.clear_pose_targets()
 
-        self.move_commander.set_start_state_to_current_state
+        self.move_commander.set_start_state_to_current_state()
         self.move_commander.set_pose_target(pose_goal,"gripper_link")
 
         # Apply constraints
-        self.move_commander.set_path_constraints(path_constraints)
-
-        # And let the planner find a solution.
-        self.move_commander.set_planning_time(5)
+        #self.move_commander.set_path_constraints(path_constraints)
+        #rospy.loginfo(self.move_commander.get_path_constraints())
 
         path = self.move_commander.plan()
+
         # TODO: Read plan message and stop execution if not plan found
         return path
 
