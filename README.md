@@ -1,1 +1,2 @@
-# robot_barista_coffee_making
+# Manipulation and perception for Robot Barista FYP
+# Monash University - Nathan Gordon
