@@ -28,20 +28,20 @@ def main():
     rospy.init_node('Manipulation')
     rospy.loginfo('Start Manipulation Node')
 
-
     # Create class objects
     robotManipulation = RobotManipulation()
 
-    #robotManipulation.arm.tuck_arm()
+    robotManipulation.arm.tuck_arm()
 
     # Movemments
-    robotManipulation.pick_cup()
+    eef_pos = robotManipulation.pick_cup()
 
-    robotManipulation.move_to_machine()
+    eef_pos = robotManipulation.move_to_machine(eef_pos)
 
-    #robotManipulation.push_button()
-    robotManipulation.remove_cup_from_machine()
+    robotManipulation.push_button(eef_pos)
 
+    #robotManipulation.remove_cup_from_machine()
+    #robotManipulation.ready_for_transport()
     #robotManipulation.open_hatch(eef_pos)
 
     
@@ -53,14 +53,15 @@ def euler_to_quat(euler_angles):
     quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
     return quat_object
 
-# Position and geometry global variables
 gripper_on_cup = 0.075
-table_height = 1.05 #0.88
+table_height = 0.88 #1.1 
+
+# Locations
 table_pos = [1, 0, table_height/2]
-cup_pos = [0.9, 0, table_height+0.05] #initial pick location
+cup_pos = [0.8, 0, table_height+0.05] #initial pick location
 sugar_pos = [0.9,-0.5,table_height+0.05]
 grasp_angle = [0, 0 ,0]
-machine_location = [1, 0.5, table_height+0.05]
+machine_location = [1, 0.25, table_height+0.05]
  
 ################------------- Robot manipulation Class -------------################
 class RobotManipulation(object):
@@ -69,8 +70,8 @@ class RobotManipulation(object):
         self.head = FetchHead()
         self.plan = RobotPathPlanning()
 
-        #self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
-        self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
+        self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
+        #self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
         self.arm.move_commander.set_planning_time(10)
         self.arm.move_commander.allow_replanning(True)
 
@@ -135,7 +136,7 @@ class RobotManipulation(object):
     ################------------- Manipulation functions -------------################
     def pick_cup(self):
         """ Function to pick up a cup. """
-
+        rospy.loginfo("Pick Cup")
         #self.arm.move_joint("shoulder_pan_joint", np.deg2rad(-45))    # Move arm so that it doesn't obstruct the camera view CONVERT TO RADIANS
 
         #rospy.sleep(8)
@@ -156,17 +157,11 @@ class RobotManipulation(object):
 
         rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_pos[0], cup_pos[1], cup_pos[2])
 
-        approach_distance = 0.10
-        z_offset = 0.05
-
-        # Make sure gripper is open
-        self.arm.gripper.open_gripper()
-
-        # Move torso up
-        #self.arm.move_torso(0.4)
+        approach_distance = 0.05
+        z_offset = 0.0
 
         # Pre grasp approach
-        eef_pos=[cup_pos[0] - approach_distance,cup_pos[1],cup_pos[2]+z_offset]
+        eef_pos=[cup_pos[0] - 0.1 - approach_distance, cup_pos[1],cup_pos[2]+z_offset]
         rospy.loginfo("Pre-grasp")
         cup_pre_grasp_pose = Pose( Point(eef_pos[0], 
                         eef_pos[1], 
@@ -175,6 +170,8 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(cup_pre_grasp_pose)
         rospy.loginfo(eef_pos)
 
+        # Make sure gripper is open
+        self.arm.gripper.open_gripper()
 
         # Planning scene updates
         #self.planning_scene.removeCollisionObject("table")
@@ -184,14 +181,7 @@ class RobotManipulation(object):
 
         # Approach
         rospy.loginfo("Approach")
-        eef_pos[0] = cup_pos[0] - 0.05
-        eef_pos[1] = cup_pos[1]
-        eef_pos[2] = cup_pos[2] + z_offset
-        cup_grasp_pose = Pose( Point(eef_pos[0], 
-                        eef_pos[1], 
-                        eef_pos[2]), 
-                        euler_to_quat(grasp_angle)) 
-        #self.arm.move_gripper_to_pose(cup_grasp_pose)
+        eef_pos[0] = cup_pos[0] - 0.1
         self.cartesian_path(eef_pos[0])
         rospy.sleep(1)
         
@@ -203,52 +193,41 @@ class RobotManipulation(object):
         self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.08,0,0,0,'gripper_link')
 
         # Lift up
-        self.arm.move_torso(0.4)
+        torso = self.arm.getJointPosition("torso_lift_joint")
+        self.arm.move_torso(torso+0.06)
 
         # Move back
         self.init_upright_constraint(10)
-        eef_pos[0]-=0.2
+        eef_pos[0]-=0.1
         self.cartesian_path(eef_pos[0])
         rospy.sleep(0.5)
-        
-    def move_to_machine(self):
-        """ Function to move cup to machine. """
 
+        return eef_pos
+        
+    def move_to_machine(self, eef_pos):
+        """ Function to move cup to machine. """
+        
         rospy.loginfo("Move to machine")
-        eef_pos = self.get_eef_pos()
+        #eef_pos = self.get_eef_pos()
                 
         # Move accross to machine
-        eef_pos[1]+=0.5
+        eef_pos[1] = machine_location[1]
+        eef_pos[2]+=0.05
         move_across= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
         plan = self.arm.solve_path_plan(move_across)
-
         self.arm.move_commander.execute(plan)
-        #self.arm.move_commander.clear_pose_targets()
         rospy.sleep(0.5)
-
-        # move down
-        eef_pos[2]-=0.045
-        move_down=Pose( Point(eef_pos[0], 
-                eef_pos[1], 
-                eef_pos[2]), 
-                euler_to_quat(grasp_angle)) 
-          
-        self.arm.move_gripper_to_pose(move_down)
 
         # move forward
         self.plan.planning_scene.removeCollisionObject("Machine")
         #self.plan.planning_scene.addBox("Machine w/ cup",0.3,0.2,0.2,machine_location[0]+0.2,machine_location[1],machine_location[2])
-        
-        eef_pos[0]+=0.25
-        place_cup=Pose( Point(eef_pos[0], 
-                eef_pos[1], 
-                eef_pos[2]), 
-                euler_to_quat(grasp_angle)) 
-        self.arm.move_gripper_to_pose(place_cup)       
+          
+        eef_pos[0] = machine_location[0] - 0.3
+        self.cartesian_path(eef_pos[0])
         rospy.sleep(0.5)
 
         # place cup
@@ -258,7 +237,7 @@ class RobotManipulation(object):
         rospy.sleep(1)
 
         # move gripper back
-        eef_pos[0]-=0.1
+        eef_pos[0]-=0.05
         retreat_machine=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -304,12 +283,12 @@ class RobotManipulation(object):
                 euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(hatch_pose) 
 
-    def push_button(self):
+    def push_button(self,eef_pos):
         """ Function to push button. """
 
-        eef_pos = self.get_eef_pos()
+        #eef_pos = self.get_eef_pos()
         # Pre-button
-        eef_pos[0]+=0.2
+        eef_pos[0] = machine_location[0] - 0.1
         eef_pos[1]-=0.2
         eef_pos[2]+=0.2
         grasp_angle=[np.deg2rad(-45),0,0]
@@ -416,6 +395,32 @@ class RobotManipulation(object):
         self.cartesian_path(eef_pos[0])
         self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
+    def ready_for_transport(self):
+        eef_pos = self.get_eef_pos()
+        self.init_upright_constraint(7)
+
+
+        eef_pos[0]-=0.2
+        eef_pos[1]-=0.4
+        #ready = Pose( Point(0.4, -0.1, 0.9), euler_to_quat(grasp_angle))
+        ready = Pose( Point(eef_pos[0],eef_pos[1],eef_pos[2]), euler_to_quat(grasp_angle))
+        plan = self.arm.solve_path_plan(ready)
+        self.arm.move_commander.execute(plan)
+
+        # joint_goal = self.arm.move_commander.get_current_joint_values()
+        # joint_goal[1] = np.deg2rad(54)
+        # joint_goal[2] = np.deg2rad(78)
+        # joint_goal[3] = np.deg2rad(-32)
+        # joint_goal[4] = np.deg2rad(120)
+        # joint_goal[5] = np.deg2rad(86)
+        # joint_goal[6] = np.deg2rad(-104)
+        
+        # self.arm.move_group.moveToJointPosition(self.arm.joints_name,joint_goal)
+
+        # joints = self.arm.getJointsPosition(self.arm.joints_name)
+        # rospy.loginfo(joints)
+        # rospy.loginfo(joint_goal)
+        # self.arm.move_joint("shoulder_pan_joint",np.deg2rad(90))
 
 ################------------- Robot planning Class -----------------################
 class RobotPathPlanning(object):

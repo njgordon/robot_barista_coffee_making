@@ -1,0 +1,13 @@
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target std_msgs_generate_messages_nodejs
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_eus
+[  0%] Built target std_msgs_generate_messages_cpp
+[ 22%] Built target fetch_pick_place
+[ 22%] Built target _manipulation_generate_messages_check_deps_ReturnJointStates
+[ 33%] Built target manipulation_generate_messages_lisp
+[ 55%] Built target manipulation_generate_messages_py
+[ 66%] Built target manipulation_generate_messages_cpp
+[ 77%] Built target manipulation_generate_messages_nodejs
+[100%] Built target manipulation_generate_messages_eus
+[100%] Built target manipulation_generate_messages

@@ -1,6 +1,0 @@
-Symlinking /home/nathan/barista_ws/devel/lib/perception/bj_vision
-Symlinking /home/nathan/barista_ws/devel/lib/perception/bb_vision
-Symlinking /home/nathan/barista_ws/devel/lib/perception/pcl_node
-Symlinking /home/nathan/barista_ws/devel/lib/pkgconfig/perception.pc
-Symlinking /home/nathan/barista_ws/devel/share/perception/cmake/perceptionConfig.cmake
-Symlinking /home/nathan/barista_ws/devel/share/perception/cmake/perceptionConfig-version.cmake
