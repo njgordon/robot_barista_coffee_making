@@ -6,7 +6,7 @@ import time
 import math
 import rospy
 import copy
-from std_msgs.msg import ColorRGBA, Float32
+from std_msgs.msg import ColorRGBA, Float32, String
 import tf2_ros
 import tf
 import tf_conversions
@@ -22,6 +22,9 @@ import actionlib # also used for move_base to pose
 # local modules for Fetch primitives
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
+# vision imports
+from ar_track_alvar_msgs.msg import AlvarMarkers
+
 
 ############################################################################################################
 def main():
@@ -30,38 +33,44 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
+    #marker_loc = robotManipulation.plan.marker_location()
 
-    robotManipulation.arm.tuck_arm()
+    #robotManipulation.arm.tuck_arm()
+
+    # Tilt head to find marker
+    #robotManipulation.head.tilt_eyes({"angle_deg":"80"})
 
     # Movemments
     eef_pos = robotManipulation.pick_cup()
+    cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
+    #eef_pos = robotManipulation.move_to_machine(eef_pos,marker_loc)
 
-    eef_pos = robotManipulation.move_to_machine(eef_pos)
+    #robotManipulation.push_button(eef_pos)
 
-    robotManipulation.push_button(eef_pos)
-
-    #robotManipulation.remove_cup_from_machine()
+    robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
     #robotManipulation.ready_for_transport()
     #robotManipulation.open_hatch(eef_pos)
 
+    #rospy.spin()
     
 
-################------------- Global Functions and variables -----------------################
-
+################------------- Global Functions and variables -----------------################    
 def euler_to_quat(euler_angles):
     hold_quat_array =tf.transformations.quaternion_from_euler(euler_angles[0], euler_angles[1] , euler_angles[2])
     quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
     return quat_object
 
-gripper_on_cup = 0.075
-table_height = 0.88 #1.1 
+GRIPPER_ON_CUP = 0.075
+TABLE_HEIGHT = 0.88 #1.1 
+APPROACH_DISTANCE = 0.05
+CUP_TO_GRIPPER_OFFSET = 0.1
 
 # Locations
-table_pos = [1, 0, table_height/2]
-cup_pos = [0.8, 0, table_height+0.05] #initial pick location
-sugar_pos = [0.9,-0.5,table_height+0.05]
+table_pos = [1, 0, TABLE_HEIGHT/2]
+cup_pos = [0.8, 0, TABLE_HEIGHT+0.05] #initial pick location
+sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
-machine_location = [1, 0.25, table_height+0.05]
+machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
  
 ################------------- Robot manipulation Class -------------################
 class RobotManipulation(object):
@@ -137,7 +146,6 @@ class RobotManipulation(object):
     def pick_cup(self):
         """ Function to pick up a cup. """
         rospy.loginfo("Pick Cup")
-        #self.arm.move_joint("shoulder_pan_joint", np.deg2rad(-45))    # Move arm so that it doesn't obstruct the camera view CONVERT TO RADIANS
 
         #rospy.sleep(8)
         #self.head.tilt_eyes({'direction':"down"}) # Look Toward Objects
@@ -157,18 +165,14 @@ class RobotManipulation(object):
 
         rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_pos[0], cup_pos[1], cup_pos[2])
 
-        approach_distance = 0.05
-        z_offset = 0.0
-
         # Pre grasp approach
-        eef_pos=[cup_pos[0] - 0.1 - approach_distance, cup_pos[1],cup_pos[2]+z_offset]
+        eef_pos=[cup_pos[0] - CUP_TO_GRIPPER_OFFSET - APPROACH_DISTANCE, cup_pos[1],cup_pos[2]]
         rospy.loginfo("Pre-grasp")
         cup_pre_grasp_pose = Pose( Point(eef_pos[0], 
                         eef_pos[1], 
                         eef_pos[2]), 
                         euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(cup_pre_grasp_pose)
-        rospy.loginfo(eef_pos)
 
         # Make sure gripper is open
         self.arm.gripper.open_gripper()
@@ -186,7 +190,7 @@ class RobotManipulation(object):
         rospy.sleep(1)
         
         # Close Gripper
-        self.arm.gripper.close_gripper(gripper_on_cup)
+        self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
         rospy.sleep(0.5)
 
         # Attach cup
@@ -206,20 +210,18 @@ class RobotManipulation(object):
         
     def move_to_machine(self, eef_pos):
         """ Function to move cup to machine. """
-        
         rospy.loginfo("Move to machine")
-        #eef_pos = self.get_eef_pos()
                 
         # Move accross to machine
         eef_pos[1] = machine_location[1]
+        #eef_pos[1] = marker_location[1]
         eef_pos[2]+=0.05
         move_across= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        plan = self.arm.solve_path_plan(move_across)
-        self.arm.move_commander.execute(plan)
+        self.arm.solve_path_plan(move_across)
         rospy.sleep(0.5)
 
         # move forward
@@ -231,13 +233,14 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # place cup
+        cup_in_machine = eef_pos[:] # copy values
         self.arm.gripper.open_gripper()
         self.plan.planning_scene.removeAttachedObject('gripped_cup')
         self.plan.planning_scene.removeCollisionObject('gripped_cup')
         rospy.sleep(1)
 
         # move gripper back
-        eef_pos[0]-=0.05
+        eef_pos[0]-= APPROACH_DISTANCE
         retreat_machine=Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -249,7 +252,7 @@ class RobotManipulation(object):
         # Add machine back
         self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
         self.arm.move_commander.clear_path_constraints()
-        return eef_pos
+        return cup_in_machine
 
     def open_hatch(self):
         """ Function to open hatch. """
@@ -321,14 +324,15 @@ class RobotManipulation(object):
         # Release
         self.arm.move_joint('wrist_flex_joint',wrist_flex+roll)
         """
-    def remove_cup_from_machine(self):
+
+    def remove_cup_from_machine(self,cup_in_machine_pos):
 
         self.init_upright_constraint(7)
-
+        eef_pos = cup_in_machine_pos[:] # copy values
         # TODO: Reduce velocity
 
         # Pre-approach
-        eef_pos = [0.65, 0.5, 1.17]
+        eef_pos[0]-=APPROACH_DISTANCE
         pre_cup_pose = Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -336,54 +340,36 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(pre_cup_pose)
 
         # Approach
+        eef_pos[0]+=APPROACH_DISTANCE
         self.plan.planning_scene.removeCollisionObject("Machine")
-        eef_pos[0]+=0.25
-        pick_cup=Pose( Point(eef_pos[0], 
-                eef_pos[1], 
-                eef_pos[2]), 
-                euler_to_quat(grasp_angle)) 
-        self.arm.move_gripper_to_pose(pick_cup)       
+        self.cartesian_path(cup_in_machine_pos[0])     
         rospy.sleep(0.5)
 
-        self.arm.gripper.close_gripper(gripper_on_cup)
-        rospy.sleep(1)
+        self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
+        rospy.sleep(0.5)
 
         # Attach cup
         self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.08,0,0,0,'gripper_link')
 
         # move gripper back
-        eef_pos[0]-=0.2
-        retreat_machine=Pose( Point(eef_pos[0], 
-                eef_pos[1], 
-                eef_pos[2]), 
-                euler_to_quat(grasp_angle))
-        self.arm.move_gripper_to_pose(retreat_machine)   
+        eef_pos[0]-=APPROACH_DISTANCE
+        self.cartesian_path(eef_pos[0]) 
 
          # Add machine back
         self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
 
-        # Move accross back to original position
-        eef_pos[1]-=0.5
+        # Pre-grasp: Move accross back to original position
+        eef_pos=[cup_pos[0] - CUP_TO_GRIPPER_OFFSET - APPROACH_DISTANCE, cup_pos[1], cup_pos[2]]
         move_across= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
-
-        plan = self.arm.solve_path_plan(move_across)
-        self.arm.move_commander.execute(plan)
-
+        self.arm.solve_path_plan(move_across)
         rospy.sleep(0.5)
 
         # Place back on table
-        eef_pos[0] = cup_pos[0] - 0.05
-        eef_pos[1] = cup_pos[1]
-        eef_pos[2] = cup_pos[2] + 0.05
-        cup_grasp_pose = Pose( Point(eef_pos[0], 
-                        eef_pos[1], 
-                        eef_pos[2]), 
-                        euler_to_quat(grasp_angle)) 
-        self.arm.move_gripper_to_pose(cup_grasp_pose)
-        #self.cartesian_path(eef_pos[0])
+        eef_pos[0]+=APPROACH_DISTANCE
+        self.cartesian_path(eef_pos[0])
 
         # TODO: lower torso slowly for placing cup, with coffee in it!
 
@@ -391,7 +377,7 @@ class RobotManipulation(object):
         self.plan.planning_scene.removeCollisionObject('gripped_cup')
        
         # Move back
-        eef_pos[0]-=0.2
+        eef_pos[0]-=APPROACH_DISTANCE*2
         self.cartesian_path(eef_pos[0])
         self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
@@ -435,9 +421,26 @@ class RobotPathPlanning(object):
         self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
 
         # Add objects
-        self.planning_scene.addBox("table", 0.6, 2.0, table_height, table_pos[0], table_pos[1], table_pos[2])
+        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
         self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
+    
+    def marker_location(self):
+        rate = rospy.Rate(10.0)
+        while not rospy.is_shutdown():
+            try:
+                marker_transfrom = self.tfBuffer.lookup_transform('base_link','ar_marker_7',rospy.Time())
+                rospy.loginfo(marker_transfrom)
+                break
+            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
+                rate.sleep()
+                continue
+        loc =[0]*3
+        loc[0] = marker_transfrom.transform.translation.x
+        loc[1] = marker_transfrom.transform.translation.y
+        loc[2] = marker_transfrom.transform.translation.z
+
+        return loc
 
 #####################################################################################
 if __name__ == '__main__':

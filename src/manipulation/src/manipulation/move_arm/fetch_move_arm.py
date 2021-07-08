@@ -125,9 +125,9 @@ class FetchArm(object):
         #rospy.loginfo(self.move_commander.get_path_constraints())
 
         path = self.move_commander.plan()
-
+        self.move_commander.execute(path)
         # TODO: Read plan message and stop execution if not plan found
-        return path
+        
 
     def joy_callback(self, msg):
         if msg.buttons[self.deadman] > 0:
