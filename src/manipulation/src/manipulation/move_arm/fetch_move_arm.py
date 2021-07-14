@@ -34,7 +34,7 @@ class FetchArm(object):
     MAX_TORSO = 0.4
     MIN_TORSO = 0
     tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
-    MAX_VELOCITY_SCALING_FACTOR = 0.3
+    MAX_VELOCITY_SCALING_FACTOR = 0.2
 
     # init adapted from Fetch manual
     def __init__(self):
@@ -66,6 +66,9 @@ class FetchArm(object):
         self.robot = moveit_commander.RobotCommander()
         self.pick_place = PickPlaceInterface("arm", "gripper")
         
+        # Init max speed
+        self.move_commander.set_max_velocity_scaling_factor(self.MAX_VELOCITY_SCALING_FACTOR)
+
         # Create a publisher to visualize the position constraints in Rviz
         self.marker_publisher = rospy.Publisher(
             "/visualization_marker", visualization_msgs.msg.Marker, queue_size=20,
@@ -125,8 +128,13 @@ class FetchArm(object):
         #rospy.loginfo(self.move_commander.get_path_constraints())
 
         path = self.move_commander.plan()
-        self.move_commander.execute(path)
-        # TODO: Read plan message and stop execution if not plan found
+        if path:
+            # Set max speed
+            path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)
+            
+            self.move_commander.execute(path_retimed)
+        else:
+            rospy.logerr("No plan found")
         
 
     def joy_callback(self, msg):

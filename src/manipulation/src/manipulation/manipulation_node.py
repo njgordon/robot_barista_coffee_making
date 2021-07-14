@@ -139,7 +139,11 @@ class RobotManipulation(object):
                                         0.0)         # jump_threshold
 
         rospy.loginfo("Waypoint fraction: %s",fraction)
-        self.arm.move_commander.execute(plan,wait=True)
+        
+        # Set max path speed
+        plan_retimed = self.arm.move_commander.retime_trajectory(self.arm.move_commander.get_current_state(),plan,self.arm.MAX_VELOCITY_SCALING_FACTOR)
+
+        self.arm.move_commander.execute(plan_retimed,wait=True)
 
 
     ################------------- Manipulation functions -------------################
@@ -370,6 +374,7 @@ class RobotManipulation(object):
         # Place back on table
         eef_pos[0]+=APPROACH_DISTANCE
         self.cartesian_path(eef_pos[0])
+        rospy.sleep(1)
 
         # TODO: lower torso slowly for placing cup, with coffee in it!
 
@@ -377,7 +382,7 @@ class RobotManipulation(object):
         self.plan.planning_scene.removeCollisionObject('gripped_cup')
        
         # Move back
-        eef_pos[0]-=APPROACH_DISTANCE*2
+        eef_pos[0]-=APPROACH_DISTANCE*3
         self.cartesian_path(eef_pos[0])
         self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
