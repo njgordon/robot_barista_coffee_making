@@ -34,7 +34,7 @@ class FetchArm(object):
     MAX_TORSO = 0.4
     MIN_TORSO = 0
     tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
-    MAX_VELOCITY_SCALING_FACTOR = 0.2
+    MAX_VELOCITY_SCALING_FACTOR = 0.5
 
     # init adapted from Fetch manual
     def __init__(self):
@@ -135,6 +135,7 @@ class FetchArm(object):
             self.move_commander.execute(path_retimed)
         else:
             rospy.logerr("No plan found")
+            
         
 
     def joy_callback(self, msg):

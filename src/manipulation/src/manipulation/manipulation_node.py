@@ -29,7 +29,6 @@ from ar_track_alvar_msgs.msg import AlvarMarkers
 ############################################################################################################
 def main():
     rospy.init_node('Manipulation')
-    rospy.loginfo('Start Manipulation Node')
 
     # Create class objects
     robotManipulation = RobotManipulation()
@@ -40,16 +39,18 @@ def main():
     # Tilt head to find marker
     #robotManipulation.head.tilt_eyes({"angle_deg":"80"})
 
-    # Movemments
-    eef_pos = robotManipulation.pick_cup()
-    cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
+    #####--- Manipulations ---#####
+
+    #eef_pos = robotManipulation.pick_cup()
+    #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
     #eef_pos = robotManipulation.move_to_machine(eef_pos,marker_loc)
 
+    #robotManipulation.open_hatch(eef_pos)
     #robotManipulation.push_button(eef_pos)
 
-    robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
-    #robotManipulation.ready_for_transport()
-    #robotManipulation.open_hatch(eef_pos)
+    #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
+    robotManipulation.ready_for_transport()
+
 
     #rospy.spin()
     
@@ -71,7 +72,8 @@ cup_pos = [0.8, 0, TABLE_HEIGHT+0.05] #initial pick location
 sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
- 
+cup_bracket = [0.1,0.1,0.5]
+
 ################------------- Robot manipulation Class -------------################
 class RobotManipulation(object):
     def __init__(self):
@@ -91,8 +93,17 @@ class RobotManipulation(object):
             self.arm.move_commander.get_current_pose().pose.position.z]
         return pos
 
-    def init_upright_constraint(self,tolerance_deg):
+    def init_upright_constraint(self, tolerance_deg, constrained_axis):
         """ Initialise upright constraint with tolerance in degrees for all axes. """
+
+        # Axis to constrain
+        if constrained_axis == "x":
+            constrained_orientation = euler_to_quat([0,0,0])
+        elif constrained_axis == "z":
+            constrained_orientation = euler_to_quat([0,np.deg2rad(90),0])
+        else:
+            return "Error: Invalid axis"
+
         self.arm.move_commander.clear_pose_targets()
         self.arm.move_commander.clear_path_constraints()
         orientation_constraint = moveit_msgs.msg.OrientationConstraint()
@@ -106,7 +117,7 @@ class RobotManipulation(object):
         orientation_constraint.header = start_pose.header
         orientation_constraint.link_name = "gripper_link"
         orientation_constraint.header.frame_id = "base_link"
-        orientation_constraint.orientation = euler_to_quat([0,0,0])
+        orientation_constraint.orientation = constrained_orientation
         orientation_constraint.absolute_x_axis_tolerance = tolerance
         orientation_constraint.absolute_y_axis_tolerance = tolerance
         orientation_constraint.absolute_z_axis_tolerance = tolerance
@@ -117,16 +128,29 @@ class RobotManipulation(object):
         rospy.loginfo("Upright constraint applied with %s deg tolerance",tolerance_deg)
         #rospy.loginfo(self.arm.move_commander.get_path_constraints())
 
-    def cartesian_path(self, x_pos):
+    def cartesian_path(self, axis_pos, axis):
         waypoints = []
         segments = 5
         wpose = self.arm.move_commander.get_current_pose().pose
         #rospy.loginfo(wpose.position.x)
 
-        dif = x_pos-wpose.position.x
+        if axis =="x":
+            dif = axis_pos-wpose.position.x
+        elif axis =="y":
+            dif = axis_pos-wpose.position.y
+        elif axis =="z":
+            dif = axis_pos-wpose.position.z
+        else:
+            return "Error: Invalid axis"
 
         for i in range(0,segments):
-            wpose.position.x += dif/segments  # Second move forward/backwards in (x)
+            if axis =="x":
+                wpose.position.x += dif/segments  # Second move forward/backwards in axis direction
+            elif axis =="y":
+                wpose.position.y += dif/segments  # Second move forward/backwards in axis direction
+            elif axis =="z":
+               wpose.position.z += dif/segments  # Second move forward/backwards in axis direction
+            
             waypoints.append(copy.deepcopy(wpose))
 
         # We want the Cartesian path to be interpolated at a resolution of 1 cm
@@ -190,7 +214,7 @@ class RobotManipulation(object):
         # Approach
         rospy.loginfo("Approach")
         eef_pos[0] = cup_pos[0] - 0.1
-        self.cartesian_path(eef_pos[0])
+        self.cartesian_path(eef_pos[0],"x")
         rospy.sleep(1)
         
         # Close Gripper
@@ -205,9 +229,9 @@ class RobotManipulation(object):
         self.arm.move_torso(torso+0.06)
 
         # Move back
-        self.init_upright_constraint(10)
+        self.init_upright_constraint(10,"x")
         eef_pos[0]-=0.1
-        self.cartesian_path(eef_pos[0])
+        self.cartesian_path(eef_pos[0],"x")
         rospy.sleep(0.5)
 
         return eef_pos
@@ -233,7 +257,7 @@ class RobotManipulation(object):
         #self.plan.planning_scene.addBox("Machine w/ cup",0.3,0.2,0.2,machine_location[0]+0.2,machine_location[1],machine_location[2])
           
         eef_pos[0] = machine_location[0] - 0.3
-        self.cartesian_path(eef_pos[0])
+        self.cartesian_path(eef_pos[0],"x")
         rospy.sleep(0.5)
 
         # place cup
@@ -331,7 +355,7 @@ class RobotManipulation(object):
 
     def remove_cup_from_machine(self,cup_in_machine_pos):
 
-        self.init_upright_constraint(7)
+        self.init_upright_constraint(7,"x")
         eef_pos = cup_in_machine_pos[:] # copy values
         # TODO: Reduce velocity
 
@@ -346,7 +370,7 @@ class RobotManipulation(object):
         # Approach
         eef_pos[0]+=APPROACH_DISTANCE
         self.plan.planning_scene.removeCollisionObject("Machine")
-        self.cartesian_path(cup_in_machine_pos[0])     
+        self.cartesian_path(cup_in_machine_pos[0],"x")     
         rospy.sleep(0.5)
 
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -357,7 +381,7 @@ class RobotManipulation(object):
 
         # move gripper back
         eef_pos[0]-=APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[0]) 
+        self.cartesian_path(eef_pos[0],"x") 
 
          # Add machine back
         self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
@@ -373,7 +397,7 @@ class RobotManipulation(object):
 
         # Place back on table
         eef_pos[0]+=APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[0])
+        self.cartesian_path(eef_pos[0],"x")
         rospy.sleep(1)
 
         # TODO: lower torso slowly for placing cup, with coffee in it!
@@ -383,35 +407,55 @@ class RobotManipulation(object):
        
         # Move back
         eef_pos[0]-=APPROACH_DISTANCE*3
-        self.cartesian_path(eef_pos[0])
+        self.cartesian_path(eef_pos[0],"x")
         self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
     def ready_for_transport(self):
-        eef_pos = self.get_eef_pos()
-        self.init_upright_constraint(7)
+        """ Function to place cup on base for transport """
+        self.arm.move_commander.clear_path_constraints()
+
+        # Pre-grasp approach
+        eef_pos = cup_pos
+        eef_pos[2]+=APPROACH_DISTANCE*2
+        grasp_angle = [0,np.deg2rad(90),0]
+        pre_grasp = Pose( Point(eef_pos[0], 
+            eef_pos[1], 
+            eef_pos[2]), 
+            euler_to_quat(grasp_angle)) 
+        self.arm.move_gripper_to_pose(pre_grasp)
+
+        # Grasp
+        self.plan.planning_scene.removeCollisionObject("cup_1")
+        eef_pos[2]=APPROACH_DISTANCE*1.5
+        self.cartesian_path(eef_pos[2],"z")
+
+        # Close Gripper
+        self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
+        # Attach cup
+        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.08,0,0,0,'gripper_link')
+        rospy.sleep(0.5)
+
+        # Retreat
+        eef_pos[2]-=APPROACH_DISTANCE
+        self.cartesian_path(eef_pos[2],"z")
+
+        # Init orientation constraint
+        self.init_upright_constraint(7,"z")
+
+        # Pre-approach base
+        eef_pos = cup_bracket
+        base_pre_approach= Pose( Point(eef_pos[0], 
+                eef_pos[1], 
+                eef_pos[2]), 
+                euler_to_quat(grasp_angle)) 
+        self.arm.solve_path_plan(base_pre_approach)
+        rospy.sleep(0.5)
+
+        # Remove base collision
+
+        # Place in bracket
 
 
-        eef_pos[0]-=0.2
-        eef_pos[1]-=0.4
-        #ready = Pose( Point(0.4, -0.1, 0.9), euler_to_quat(grasp_angle))
-        ready = Pose( Point(eef_pos[0],eef_pos[1],eef_pos[2]), euler_to_quat(grasp_angle))
-        plan = self.arm.solve_path_plan(ready)
-        self.arm.move_commander.execute(plan)
-
-        # joint_goal = self.arm.move_commander.get_current_joint_values()
-        # joint_goal[1] = np.deg2rad(54)
-        # joint_goal[2] = np.deg2rad(78)
-        # joint_goal[3] = np.deg2rad(-32)
-        # joint_goal[4] = np.deg2rad(120)
-        # joint_goal[5] = np.deg2rad(86)
-        # joint_goal[6] = np.deg2rad(-104)
-        
-        # self.arm.move_group.moveToJointPosition(self.arm.joints_name,joint_goal)
-
-        # joints = self.arm.getJointsPosition(self.arm.joints_name)
-        # rospy.loginfo(joints)
-        # rospy.loginfo(joint_goal)
-        # self.arm.move_joint("shoulder_pan_joint",np.deg2rad(90))
 
 ################------------- Robot planning Class -----------------################
 class RobotPathPlanning(object):
@@ -429,7 +473,8 @@ class RobotPathPlanning(object):
         self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
         self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
-    
+        # TODO: add cup brakcet on base
+
     def marker_location(self):
         rate = rospy.Rate(10.0)
         while not rospy.is_shutdown():
