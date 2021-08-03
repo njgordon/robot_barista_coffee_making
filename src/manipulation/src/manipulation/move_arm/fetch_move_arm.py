@@ -34,7 +34,7 @@ class FetchArm(object):
     MAX_TORSO = 0.4
     MIN_TORSO = 0
     tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
-    MAX_VELOCITY_SCALING_FACTOR = 0.5
+    MAX_VELOCITY_SCALING_FACTOR = 0.2
 
     # init adapted from Fetch manual
     def __init__(self):
@@ -59,6 +59,8 @@ class FetchArm(object):
         self.planning_scene.addBox("ground_keepout", 1.5, 1.5, 0.02, 0.0, 0.0, -0.012)
         self.planning_scene.addBox("base_keepout_1", 0.25, 0.45, 0.001, 0.09, 0.0, 0.368)
         self.planning_scene.addCylinder("base_keepout_2",0.001, 0.15, 0.12, 0, 0.368)
+        self.planning_scene.addBox("base_side_keepout_1",0.4,0.001,0.35,0.02,0.27,0.2)
+        self.planning_scene.addBox("base_side_keepout_2",0.4,0.001,0.35,0.02,-0.27,0.2)
 
         moveit_commander.roscpp_initialize(sys.argv)
         self.move_group = MoveGroupInterface("arm_with_torso", "base_link")
