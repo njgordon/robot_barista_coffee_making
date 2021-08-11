@@ -33,8 +33,8 @@ class FetchArm(object):
 
     MAX_TORSO = 0.4
     MIN_TORSO = 0
-    tuck_arm_pos = [0.4, 1.32, 1.40, -0.2, 1.72, 0.0, 1.66, 0.0]
-    MAX_VELOCITY_SCALING_FACTOR = 0.2
+    tuck_arm_pos = [0.4, np.deg2rad(90), 1.40, 0.0, 1.72, 0.0, np.deg2rad(90), np.deg2rad(90)]
+    MAX_VELOCITY_SCALING_FACTOR = 0.5
 
     # init adapted from Fetch manual
     def __init__(self):
@@ -125,19 +125,12 @@ class FetchArm(object):
         self.move_commander.set_start_state_to_current_state()
         self.move_commander.set_pose_target(pose_goal,"gripper_link")
 
-        # Apply constraints
-        #self.move_commander.set_path_constraints(path_constraints)
-        #rospy.loginfo(self.move_commander.get_path_constraints())
-
         path = self.move_commander.plan()
-        if path:
-            # Set max speed
-            path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)
-            
-            self.move_commander.execute(path_retimed)
-        else:
-            rospy.logerr("No plan found")
-            
+
+        path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)            
+        self.move_commander.execute(path_retimed)  
+
+        # TODO: collision checking so controller doesn't shutdown
         
 
     def joy_callback(self, msg):
@@ -239,6 +232,7 @@ class FetchArm(object):
 
         rospy.sleep(1)
         # Move torso down
+        self.planning_scene.clear()
         self.move_torso(self.MIN_TORSO)
         rospy.sleep(1)
 

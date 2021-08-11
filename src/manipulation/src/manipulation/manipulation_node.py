@@ -22,6 +22,7 @@ import actionlib # also used for move_base to pose
 # local modules for Fetch primitives
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
+from path_planning import * 
 # vision imports
 from ar_track_alvar_msgs.msg import AlvarMarkers
 
@@ -32,7 +33,7 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
-    marker_loc = robotManipulation.plan.marker_location()
+    #marker_loc = robotManipulation.plan.marker_location()
 
     #robotManipulation.arm.tuck_arm()
 
@@ -40,40 +41,17 @@ def main():
     #eef_pos = robotManipulation.pick_cup()
     #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
 
-
-
     #eef_pos = robotManipulation.move_to_machine(eef_pos,marker_loc)
 
     #robotManipulation.open_hatch(eef_pos)
-    robotManipulation.push_button(marker_loc)
+    #robotManipulation.push_button(marker_loc)
 
     #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
-    #robotManipulation.ready_for_transport()
+    robotManipulation.ready_for_transport()
 
 
     #rospy.spin()
     
-
-################------------- Global Functions and variables -----------------################    
-def euler_to_quat(euler_angles):
-    hold_quat_array =tf.transformations.quaternion_from_euler(euler_angles[0], euler_angles[1] , euler_angles[2])
-    quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
-    return quat_object
-
-GRIPPER_ON_CUP = 0.075
-TABLE_HEIGHT = 0.89 #1.1 
-APPROACH_DISTANCE = 0.05
-CUP_TO_GRIPPER_OFFSET = 0.1
-CUP_TO_MACHINE_OFFSET = 0.22
-MACHINE_TO_MARKER_OFFSET = 0.13
-
-# Locations
-table_pos = [1, 0, TABLE_HEIGHT/2]
-cup_pos = [0.75, -0.15, TABLE_HEIGHT+0.05] #initial pick location
-#sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
-grasp_angle = [0, 0 ,0]
-machine_location = [1, 0.25, TABLE_HEIGHT+0.1]
-cup_bracket = [0.1,0.1,0.5]
 
 ################------------- Robot manipulation Class -------------################
 class RobotManipulation(object):
@@ -81,9 +59,9 @@ class RobotManipulation(object):
         self.arm = FetchArm()
         self.plan = RobotPathPlanning()
 
-        self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
+        #self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
         #self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
-        self.arm.move_commander.set_planning_time(10)
+        self.arm.move_commander.set_planning_time(20)
         self.arm.move_commander.allow_replanning(True)
 
     def get_eef_pos(self):
@@ -128,7 +106,11 @@ class RobotManipulation(object):
         rospy.loginfo("Upright constraint applied with %s deg tolerance",tolerance_deg)
         #rospy.loginfo(self.arm.move_commander.get_path_constraints())
 
-    def cartesian_path(self, axis_pos, axis):
+    def cartesian_path(self, axis_pos, axis, direction=True):
+        """ Function for movement along single axis. axis: {x, y, z}. direction: {true: positive direction, false: negative direction} """
+        self.arm.move_commander.clear_pose_targets()
+        self.arm.move_commander.clear_path_constraints()
+
         waypoints = []
         segments = 5
         wpose = self.arm.move_commander.get_current_pose().pose
@@ -145,12 +127,20 @@ class RobotManipulation(object):
 
         for i in range(0,segments):
             if axis =="x":
-                wpose.position.x += dif/segments  # Second move forward/backwards in axis direction
+                if direction:
+                    wpose.position.x += dif/segments  # move along axis in positive direction
+                else:
+                    wpose.position.x -= dif/segments  # move along axis in negative direction
             elif axis =="y":
-                wpose.position.y += dif/segments  # Second move forward/backwards in axis direction
+                if direction:
+                    wpose.position.y += dif/segments  # move along axis in positive direction
+                else:
+                    wpose.position.y -= dif/segments  # move along axis in negative direction
             elif axis =="z":
-               wpose.position.z += dif/segments  # Second move forward/backwards in axis direction
-            
+                if direction:
+                    wpose.position.z += dif/segments  # move along axis in positive direction
+                else:
+                    wpose.position.z -= dif/segments  # move along axis in negative direction
             waypoints.append(copy.deepcopy(wpose))
 
         # We want the Cartesian path to be interpolated at a resolution of 1 cm
@@ -251,7 +241,8 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        self.arm.solve_path_plan(move_across)
+        self.cartesian_path(eef_pos[1],'y')
+        #self.arm.solve_path_plan(move_across)
         rospy.sleep(0.5)
 
         # move forward
@@ -402,25 +393,25 @@ class RobotManipulation(object):
 
         # Pre-grasp approach
         eef_pos = cup_pos[:]
-        eef_pos[2]+=2*APPROACH_DISTANCE
+        eef_pos[2]+=3*APPROACH_DISTANCE
         grasp_angle = [0,np.deg2rad(90),0]
         pre_grasp = Pose( Point(eef_pos[0], 
             eef_pos[1], 
             eef_pos[2]), 
             euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(pre_grasp)
-        rospy.sleep(1)
+        self.plan.planning_scene.removeCollisionObject("cup_1")
+        rospy.sleep(0.5)
 
         # Grasp
-        self.plan.planning_scene.removeCollisionObject("cup_1")
-        #eef_pos[2]-=APPROACH_DISTANCE
-        #self.cartesian_path(eef_pos[2],"z")
-
+        eef_pos[2]+=APPROACH_DISTANCE
+        self.cartesian_path(eef_pos[2],"z")
+        rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
         # Attach cup
-        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.08,0,0,0,'gripper_link')
-        rospy.sleep(1)
+        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.05,0.05,0.03,0,0,'gripper_link')
+        rospy.sleep(0.5)
 
         # Retreat
         eef_pos[2]+=2*APPROACH_DISTANCE
@@ -430,7 +421,8 @@ class RobotManipulation(object):
         self.init_upright_constraint(7,"z")
 
         # Pre-approach base
-        eef_pos = cup_bracket
+        eef_pos = cup_holder[:]
+        eef_pos[2] += 3*APPROACH_DISTANCE
         base_pre_approach= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -438,64 +430,29 @@ class RobotManipulation(object):
         self.arm.solve_path_plan(base_pre_approach)
         rospy.sleep(0.5)
 
-        # Remove base collision
+        # Remove holder collision object
+        self.plan.planning_scene.removeCollisionObject("cup_holder")
 
         # Place in bracket
+        #eef_pos[2]+=0.5*APPROACH_DISTANCE
+        #self.cartesian_path(eef_pos[2],"z")
+        torso = self.arm.getJointPosition("torso_lift_joint")
+        self.arm.move_torso(torso-0.05)
         self.arm.gripper.open_gripper()
+        self.plan.planning_scene.removeAttachedObject("gripped_cup")
+        self.plan.planning_scene.removeCollisionObject("gripped_cup")
 
+        # Retreat
+        #eef_pos[2] += 2*APPROACH_DISTANCE
+        #self.cartesian_path(eef_pos[2],"z")
+        self.arm.move_torso(torso+0.05)
 
-################------------- Robot planning Class -----------------################
-class RobotPathPlanning(object):
-    def __init__(self):
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
-        self.head = FetchHead()
+        # Add back collision object
+        self.plan.planning_scene.addCylinder("cup_holder",0.11,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
 
-        # Create the scene
-        self.planning_scene = PlanningSceneInterface("base_link")
-        self.planning_scene.removeCollisionObject("table")
-        self.planning_scene.removeCollisionObject("cup_1")
-        #self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
+        # Tuck arm for transport
+        self.arm.tuck_arm()
 
-        # Add objects
-        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT, table_pos[0], table_pos[1], table_pos[2])
-        self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
-        #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
-        # TODO: add cup brakcet on base
-
-    def marker_location(self):
-        #rate = rospy.Rate(0.5)
-        flag=0
-
-        while not rospy.is_shutdown():
-            try:
-                marker_transfrom = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
-                rospy.loginfo(marker_transfrom)
-                break
-            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
-                # Tilt head to find marker
-                if flag:
-                    self.head.turn_head({"direction":"left","angle_deg":"10"})
-                    flag=0
-                else:
-                    self.head.turn_head({"direction":"right","angle_deg":"10"})
-                    flag=1
-
-                #rate.sleep()
-                rospy.sleep(3)
-                continue
-        loc =[0]*3
-        loc[0] = marker_transfrom.transform.translation.x
-        loc[1] = marker_transfrom.transform.translation.y
-        loc[2] = marker_transfrom.transform.translation.z
-
-        # Add machine object
-        global machine_location
-        machine_location[0]=loc[0]
-        machine_location[1]=loc[1]
-        self.planning_scene.addBox("Machine",0.27,0.2,0.3,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
-
-        return loc
 
 #####################################################################################
 if __name__ == '__main__':
