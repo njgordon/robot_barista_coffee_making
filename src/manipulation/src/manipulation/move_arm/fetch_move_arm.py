@@ -53,21 +53,16 @@ class FetchArm(object):
         # This creates objects in the planning scene that mimic the ground/base
         # If these were not in place gripper could hit the ground/base
         self.planning_scene = PlanningSceneInterface("base_link")
-        self.planning_scene.removeCollisionObject("ground_keepout")
-        self.planning_scene.removeCollisionObject("base_keepout_1")
-        self.planning_scene.removeCollisionObject("base_keepout_2")
-        self.planning_scene.addBox("ground_keepout", 1.5, 1.5, 0.02, 0.0, 0.0, -0.012)
-        self.planning_scene.addBox("base_keepout_1", 0.25, 0.45, 0.001, 0.09, 0.0, 0.368)
-        self.planning_scene.addCylinder("base_keepout_2",0.001, 0.15, 0.12, 0, 0.368)
-        self.planning_scene.addBox("base_side_keepout_1",0.4,0.001,0.35,0.02,0.27,0.2)
-        self.planning_scene.addBox("base_side_keepout_2",0.4,0.001,0.35,0.02,-0.27,0.2)
+        self.init_robot_self_collision_avoidanace()
 
+        # Move commander and Move group initilization
         moveit_commander.roscpp_initialize(sys.argv)
         self.move_group = MoveGroupInterface("arm_with_torso", "base_link")
         self.move_commander = moveit_commander.MoveGroupCommander("arm_with_torso")
         self.robot = moveit_commander.RobotCommander()
         self.pick_place = PickPlaceInterface("arm", "gripper")
-        
+        self.move_commander.set_end_effector_link("gripper_link")
+
         # Init max speed
         self.move_commander.set_max_velocity_scaling_factor(self.MAX_VELOCITY_SCALING_FACTOR)
 
@@ -119,6 +114,7 @@ class FetchArm(object):
         return state
 
     def solve_path_plan(self, pose_goal):
+        """ Solve path plan and execure with constraints applied"""
         # Clear 
         self.move_commander.clear_pose_targets()
 
@@ -132,6 +128,96 @@ class FetchArm(object):
 
         # TODO: collision checking so controller doesn't shutdown
         
+    def init_upright_constraint(self, tolerance_deg, constrained_axis):
+        """ Initialise upright constraint with tolerance in degrees for all axes. """
+        # Axis to constrain
+        if constrained_axis == "x":
+            constrained_orientation = euler_to_quat([0,0,0])
+        elif constrained_axis == "z":
+            constrained_orientation = euler_to_quat([0,np.deg2rad(90),0])
+        else:
+            return "Error: Invalid axis"
+
+        self.move_commander.clear_pose_targets()
+        self.move_commander.clear_path_constraints()
+        orientation_constraint = moveit_msgs.msg.OrientationConstraint()
+        constraints = moveit_msgs.msg.Constraints()
+
+        tolerance = np.deg2rad(tolerance_deg)
+        start_pose = self.move_commander.get_current_pose("gripper_link")
+
+        constraints.name = "upright"
+        self.move_commander.set_pose_reference_frame("base_link")
+        orientation_constraint.header = start_pose.header
+        orientation_constraint.link_name = "gripper_link"
+        orientation_constraint.header.frame_id = "base_link"
+        orientation_constraint.orientation = constrained_orientation
+        orientation_constraint.absolute_x_axis_tolerance = tolerance
+        orientation_constraint.absolute_y_axis_tolerance = tolerance
+        orientation_constraint.absolute_z_axis_tolerance = tolerance
+        orientation_constraint.weight = 1.0
+        
+        constraints.orientation_constraints.append(orientation_constraint)
+        self.move_commander.set_path_constraints(constraints)
+        rospy.loginfo("Upright constraint applied with %s deg tolerance",tolerance_deg)
+        #rospy.loginfo(self.arm.move_commander.get_path_constraints())
+
+    def init_robot_self_collision_avoidanace(self):
+        self.planning_scene.removeCollisionObject("ground_keepout")
+        self.planning_scene.removeCollisionObject("base_keepout_1")
+        self.planning_scene.removeCollisionObject("base_keepout_2")
+        self.planning_scene.addBox("ground_keepout", 1.5, 1.5, 0.02, 0.0, 0.0, -0.012)
+        self.planning_scene.addBox("base_keepout_1", 0.25, 0.45, 0.001, 0.09, 0.0, 0.368)
+        self.planning_scene.addCylinder("base_keepout_2",0.001, 0.15, 0.12, 0, 0.368)
+        self.planning_scene.addBox("base_side_keepout_1",0.4,0.001,0.35,0.02,0.27,0.2)
+        self.planning_scene.addBox("base_side_keepout_2",0.4,0.001,0.35,0.02,-0.27,0.2)
+        self.planning_scene.addBox("front_keepout", 0.001, 0.45, 0.3, 0.29, 0.0, 0.2)
+
+    def cartesian_path(self, axis_position, axis):
+        """ Function for movement along single axis. axis: {x, y, z}. direction: {true: positive direction, false: negative direction} """
+        self.move_commander.clear_pose_targets()
+        self.move_commander.clear_path_constraints()
+
+        waypoints = []
+        segments = 5
+
+        wpose = self.move_commander.get_current_pose("gripper_link").pose 
+
+        # Take the differnce between current and desired position and segment for waypoints
+        if axis =="x":
+            dif = axis_position-wpose.position.x
+        elif axis =="y":
+            dif = axis_position-wpose.position.y
+        elif axis =="z":
+            dif = axis_position-wpose.position.z
+        else:
+            return "Error: Invalid axis"
+        
+        for i in range(0,segments):
+            if axis =="x":
+                    wpose.position.x += dif/segments  
+            elif axis =="y":
+                    wpose.position.y += dif/segments  
+            elif axis =="z":
+                    wpose.position.z += dif/segments  
+            waypoints.append(copy.deepcopy(wpose))
+
+        #rospy.loginfo(waypoints)
+
+        # We want the Cartesian path to be interpolated at a resolution of 1 cm
+        # which is why we will specify 0.01 as the eef_step in Cartesian
+        # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
+
+        (plan, fraction) = self.move_commander.compute_cartesian_path(
+                                        waypoints,   # waypoints to follow
+                                        0.01,        # eef_step
+                                        0.0)         # jump_threshold
+
+        rospy.loginfo("Waypoint fraction: %s",fraction)
+        
+        # Set max path speed
+        plan_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),plan,self.MAX_VELOCITY_SCALING_FACTOR)
+        self.move_commander.execute(plan,wait=True)
 
     def joy_callback(self, msg):
         if msg.buttons[self.deadman] > 0:
@@ -190,7 +276,7 @@ class FetchArm(object):
         self.move_commander.clear_path_constraints()     
 
     # Primitive: tuck_arm - reset arm to idle pose
-    def tuck_arm(self, parameters={}):
+    def tuck_arm(self, lower_torso=False, parameters={}):
         
         # Check is fetch is already in tuck pose
         jointsPos = self.getJointsPosition(self.joints_name)
@@ -231,10 +317,12 @@ class FetchArm(object):
         self.move_group.get_move_action().cancel_all_goals()
 
         rospy.sleep(1)
-        # Move torso down
-        self.planning_scene.clear()
-        self.move_torso(self.MIN_TORSO)
-        rospy.sleep(1)
+        
+        if lower_torso:
+            # Move torso down
+            self.planning_scene.clear()
+            self.move_torso(self.MIN_TORSO)
+            rospy.sleep(1)
 
     # Option: to reverse order of animation
     def reverse_order_if_param_set(self, pose_list, parameters):
@@ -375,3 +463,9 @@ class FetchGripper(object):
 class PoseError(Exception):
     def __init__(self, pose_params):
         self.pose_params = pose_params
+
+# Euler to quaterion rotation-object conversion
+def euler_to_quat(euler_angles):
+    hold_quat_array =tf.transformations.quaternion_from_euler(euler_angles[0], euler_angles[1] , euler_angles[2])
+    quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
+    return quat_object

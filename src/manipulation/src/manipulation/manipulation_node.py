@@ -38,8 +38,8 @@ def main():
     #robotManipulation.arm.tuck_arm()
 
     #####--- Manipulations ---#####
-    #eef_pos = robotManipulation.pick_cup()
-    #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
+    eef_pos = robotManipulation.pick_cup()
+    cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
 
     #eef_pos = robotManipulation.move_to_machine(eef_pos,marker_loc)
 
@@ -47,7 +47,7 @@ def main():
     #robotManipulation.push_button(marker_loc)
 
     #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
-    robotManipulation.ready_for_transport()
+    #robotManipulation.ready_for_transport()
 
 
     #rospy.spin()
@@ -63,102 +63,6 @@ class RobotManipulation(object):
         #self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
         self.arm.move_commander.set_planning_time(20)
         self.arm.move_commander.allow_replanning(True)
-
-    def get_eef_pos(self):
-        pos = [
-            self.arm.move_commander.get_current_pose().pose.position.x,
-            self.arm.move_commander.get_current_pose().pose.position.y,
-            self.arm.move_commander.get_current_pose().pose.position.z]
-        return pos
-
-    def init_upright_constraint(self, tolerance_deg, constrained_axis):
-        """ Initialise upright constraint with tolerance in degrees for all axes. """
-
-        # Axis to constrain
-        if constrained_axis == "x":
-            constrained_orientation = euler_to_quat([0,0,0])
-        elif constrained_axis == "z":
-            constrained_orientation = euler_to_quat([0,np.deg2rad(90),0])
-        else:
-            return "Error: Invalid axis"
-
-        self.arm.move_commander.clear_pose_targets()
-        self.arm.move_commander.clear_path_constraints()
-        orientation_constraint = moveit_msgs.msg.OrientationConstraint()
-        constraints = moveit_msgs.msg.Constraints()
-
-        tolerance = np.deg2rad(tolerance_deg)
-        start_pose = self.arm.move_commander.get_current_pose("gripper_link")
-
-        constraints.name = "upright"
-        self.arm.move_commander.set_pose_reference_frame("base_link")
-        orientation_constraint.header = start_pose.header
-        orientation_constraint.link_name = "gripper_link"
-        orientation_constraint.header.frame_id = "base_link"
-        orientation_constraint.orientation = constrained_orientation
-        orientation_constraint.absolute_x_axis_tolerance = tolerance
-        orientation_constraint.absolute_y_axis_tolerance = tolerance
-        orientation_constraint.absolute_z_axis_tolerance = tolerance
-        orientation_constraint.weight = 1.0
-        
-        constraints.orientation_constraints.append(orientation_constraint)
-        self.arm.move_commander.set_path_constraints(constraints)
-        rospy.loginfo("Upright constraint applied with %s deg tolerance",tolerance_deg)
-        #rospy.loginfo(self.arm.move_commander.get_path_constraints())
-
-    def cartesian_path(self, axis_pos, axis, direction=True):
-        """ Function for movement along single axis. axis: {x, y, z}. direction: {true: positive direction, false: negative direction} """
-        self.arm.move_commander.clear_pose_targets()
-        self.arm.move_commander.clear_path_constraints()
-
-        waypoints = []
-        segments = 5
-        wpose = self.arm.move_commander.get_current_pose().pose
-        #rospy.loginfo(wpose.position.x)
-
-        if axis =="x":
-            dif = axis_pos-wpose.position.x
-        elif axis =="y":
-            dif = axis_pos-wpose.position.y
-        elif axis =="z":
-            dif = axis_pos-wpose.position.z
-        else:
-            return "Error: Invalid axis"
-
-        for i in range(0,segments):
-            if axis =="x":
-                if direction:
-                    wpose.position.x += dif/segments  # move along axis in positive direction
-                else:
-                    wpose.position.x -= dif/segments  # move along axis in negative direction
-            elif axis =="y":
-                if direction:
-                    wpose.position.y += dif/segments  # move along axis in positive direction
-                else:
-                    wpose.position.y -= dif/segments  # move along axis in negative direction
-            elif axis =="z":
-                if direction:
-                    wpose.position.z += dif/segments  # move along axis in positive direction
-                else:
-                    wpose.position.z -= dif/segments  # move along axis in negative direction
-            waypoints.append(copy.deepcopy(wpose))
-
-        # We want the Cartesian path to be interpolated at a resolution of 1 cm
-        # which is why we will specify 0.01 as the eef_step in Cartesian
-        # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
-
-        (plan, fraction) = self.arm.move_commander.compute_cartesian_path(
-                                        waypoints,   # waypoints to follow
-                                        0.01,        # eef_step
-                                        0.0)         # jump_threshold
-
-        rospy.loginfo("Waypoint fraction: %s",fraction)
-        
-        # Set max path speed
-        plan_retimed = self.arm.move_commander.retime_trajectory(self.arm.move_commander.get_current_state(),plan,self.arm.MAX_VELOCITY_SCALING_FACTOR)
-
-        self.arm.move_commander.execute(plan_retimed,wait=True)
-
 
     ################------------- Manipulation functions -------------################
     def pick_cup(self):
@@ -184,14 +88,14 @@ class RobotManipulation(object):
         rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_pos[0], cup_pos[1], cup_pos[2])
 
         # Pre grasp approach
-        eef_pos=[cup_pos[0] - CUP_TO_GRIPPER_OFFSET - APPROACH_DISTANCE, cup_pos[1],cup_pos[2]]
+        eef_pos=[cup_pos[0]- APPROACH_DISTANCE*3, cup_pos[1],cup_pos[2]]
         rospy.loginfo("Pre-grasp")
         cup_pre_grasp_pose = Pose( Point(eef_pos[0], 
                         eef_pos[1], 
                         eef_pos[2]), 
                         euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(cup_pre_grasp_pose)
-
+        #rospy.loginfo(eef_pos[0])
         # Make sure gripper is open
         self.arm.gripper.open_gripper()
       
@@ -199,8 +103,9 @@ class RobotManipulation(object):
 
         # Approach
         rospy.loginfo("Approach")
-        eef_pos[0] = cup_pos[0] - CUP_TO_GRIPPER_OFFSET
-        self.cartesian_path(eef_pos[0],"x")
+        eef_pos[0] = cup_pos[0]
+        #rospy.loginfo(eef_pos[0])
+        self.arm.cartesian_path(eef_pos[0],"x")
         rospy.sleep(1)
         
         # Close Gripper
@@ -208,7 +113,7 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # Attach cup
-        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.07,0.1,0,0,0,'gripper_link')
+        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.05,0.05,0.03,0,0,'gripper_link')
 
         # Lift up
         #torso = self.arm.getJointPosition("torso_lift_joint")
@@ -219,10 +124,11 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(lift)
+        rospy.sleep(0.5)
 
         # Move back
-        eef_pos[0]-=0.2
-        self.cartesian_path(eef_pos[0],"x")
+        eef_pos[0]-=APPROACH_DISTANCE*2
+        self.arm.cartesian_path(eef_pos[0],"x")
         rospy.sleep(0.5)
 
         return eef_pos
@@ -230,7 +136,7 @@ class RobotManipulation(object):
     def move_to_machine(self, eef_pos):
         """ Function to move cup to machine. """
         rospy.loginfo("Move to machine")
-        self.init_upright_constraint(10,"x")
+        self.arm.init_upright_constraint(10,"x")
 
         # Move accross to machine
         eef_pos[1] = machine_location[1]
@@ -241,7 +147,7 @@ class RobotManipulation(object):
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
 
-        self.cartesian_path(eef_pos[1],'y')
+        self.arm.cartesian_path(eef_pos[1],'y')
         #self.arm.solve_path_plan(move_across)
         rospy.sleep(0.5)
 
@@ -250,7 +156,7 @@ class RobotManipulation(object):
         #self.plan.planning_scene.addBox("Machine w/ cup",0.3,0.2,0.2,machine_location[0]+0.2,machine_location[1],machine_location[2])
           
         eef_pos[0] = machine_location[0] - CUP_TO_MACHINE_OFFSET
-        self.cartesian_path(eef_pos[0],"x")
+        self.arm.cartesian_path(eef_pos[0],"x")
         rospy.sleep(0.5)
 
         # place cup
@@ -277,7 +183,7 @@ class RobotManipulation(object):
 
     def open_hatch(self):
         """ Function to open hatch. """
-        eef_pos = self.get_eef_pos()
+        #eef_pos = self.get_eef_pos()
 
         # Tilt gripper and move to hatch
         grasp_angle = [np.deg2rad(90),0,0]
@@ -332,7 +238,7 @@ class RobotManipulation(object):
 
     def remove_cup_from_machine(self,cup_in_machine_pos):
 
-        self.init_upright_constraint(7,"x")
+        self.arm.init_upright_constraint(7,"x")
         eef_pos = cup_in_machine_pos[:] # copy values
 
         # Pre-approach
@@ -346,7 +252,7 @@ class RobotManipulation(object):
         # Approach
         eef_pos[0]+=APPROACH_DISTANCE
         self.plan.planning_scene.removeCollisionObject("Machine")
-        self.cartesian_path(cup_in_machine_pos[0],"x")     
+        self.arm.cartesian_path(cup_in_machine_pos[0],"x")     
         rospy.sleep(0.5)
 
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -357,13 +263,13 @@ class RobotManipulation(object):
 
         # move gripper back
         eef_pos[0]-=APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[0],"x") 
+        self.arm.cartesian_path(eef_pos[0],"x") 
 
          # Add machine back
         self.plan.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
 
         # Pre-grasp: Move accross back to original position
-        eef_pos=[cup_pos[0] - CUP_TO_GRIPPER_OFFSET - APPROACH_DISTANCE, cup_pos[1], cup_pos[2]]
+        eef_pos=[cup_pos[0] - APPROACH_DISTANCE, cup_pos[1], cup_pos[2]]
         move_across= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -373,7 +279,7 @@ class RobotManipulation(object):
 
         # Place back on table
         eef_pos[0]+=APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[0],"x")
+        self.arm.cartesian_path(eef_pos[0],"x")
         rospy.sleep(1)
 
         # TODO: lower torso slowly for placing cup, with coffee in it!
@@ -405,7 +311,7 @@ class RobotManipulation(object):
 
         # Grasp
         eef_pos[2]+=APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[2],"z")
+        self.arm.cartesian_path(eef_pos[2],"z")
         rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -415,10 +321,10 @@ class RobotManipulation(object):
 
         # Retreat
         eef_pos[2]+=2*APPROACH_DISTANCE
-        self.cartesian_path(eef_pos[2],"z")
+        self.arm.cartesian_path(eef_pos[2],"z")
 
         # Init orientation constraint
-        self.init_upright_constraint(7,"z")
+        self.arm.init_upright_constraint(7,"z")
 
         # Pre-approach base
         eef_pos = cup_holder[:]

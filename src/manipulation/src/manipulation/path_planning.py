@@ -34,16 +34,15 @@ def euler_to_quat(euler_angles):
 GRIPPER_ON_CUP = 0.075
 TABLE_HEIGHT = 0.89 #1.1 
 APPROACH_DISTANCE = 0.05
-CUP_TO_GRIPPER_OFFSET = 0.1
 CUP_TO_MACHINE_OFFSET = 0.22
 MACHINE_TO_MARKER_OFFSET = 0.13
 
 # Locations
 table_pos = [1, 0, TABLE_HEIGHT/2]
-cup_pos = [0.75, -0.15, TABLE_HEIGHT+0.05] #initial pick location
+cup_pos = [0.8, -0.15, TABLE_HEIGHT+0.05] #initial pick location
 #sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
-machine_location = [1, 0.25, TABLE_HEIGHT+0.1]
+machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
 cup_holder = [0.22,0,0.42]
 
 ################------------- Robot planning Class -----------------################
@@ -59,7 +58,7 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("cup_1")
 
         # Add objects
-        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT, table_pos[0], table_pos[1], table_pos[2])
+        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
         self.planning_scene.addCylinder("cup_holder",0.11,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
         #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
@@ -101,3 +100,10 @@ class RobotPathPlanning(object):
         self.planning_scene.addBox("Machine",0.27,0.2,0.3,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
 
         return loc
+
+        def get_eef_pos(self):
+            pos = [
+            self.arm.move_commander.get_current_pose().pose.position.x,
+            self.arm.move_commander.get_current_pose().pose.position.y,
+            self.arm.move_commander.get_current_pose().pose.position.z]
+            return pos
