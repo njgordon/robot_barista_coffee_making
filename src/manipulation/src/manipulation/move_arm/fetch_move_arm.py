@@ -34,7 +34,7 @@ class FetchArm(object):
     MAX_TORSO = 0.4
     MIN_TORSO = 0
     tuck_arm_pos = [0.4, np.deg2rad(90), 1.40, 0.0, 1.72, 0.0, np.deg2rad(90), np.deg2rad(90)]
-    MAX_VELOCITY_SCALING_FACTOR = 0.5
+    MAX_VELOCITY_SCALING_FACTOR = 0.2
 
     # init adapted from Fetch manual
     def __init__(self):

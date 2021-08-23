@@ -31,15 +31,15 @@ def euler_to_quat(euler_angles):
     quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
     return quat_object
 
-GRIPPER_ON_CUP = 0.075
+GRIPPER_ON_CUP = 0.076
 TABLE_HEIGHT = 0.89 #1.1 
 APPROACH_DISTANCE = 0.05
-CUP_TO_MACHINE_OFFSET = 0.22
-MACHINE_TO_MARKER_OFFSET = 0.13
+CUP_TO_MACHINE_OFFSET = 0.05
+MACHINE_TO_MARKER_OFFSET = 0.12
 
 # Locations
 table_pos = [1, 0, TABLE_HEIGHT/2]
-cup_pos = [0.8, -0.15, TABLE_HEIGHT+0.05] #initial pick location
+cup_pos = [0.8, -0.25, TABLE_HEIGHT+0.06] #initial pick location
 #sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
@@ -56,6 +56,7 @@ class RobotPathPlanning(object):
         self.planning_scene = PlanningSceneInterface("base_link")
         self.planning_scene.removeCollisionObject("table")
         self.planning_scene.removeCollisionObject("cup_1")
+        self.deposit_cup() # removes gripped cup if still attached
 
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
@@ -66,11 +67,23 @@ class RobotPathPlanning(object):
         # Static machine location for simulation
         #self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
         
+    def attach_cup(self):
+        """ Attaches cup to gripper """
+        self.planning_scene.attachBox('gripped_cup',0.05,0.05,0.05,0.03,0,0,'gripper_link')
+
+    def deposit_cup(self):
+        """ Removes gripped cup from planning scene """
+        self.planning_scene.removeAttachedObject('gripped_cup')
+        self.planning_scene.removeCollisionObject('gripped_cup')
+
+    def add_machine_object(self):
+        self.planning_scene.addBox("Machine",0.27,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
+
 
     def marker_location(self):
-        #rate = rospy.Rate(0.5)
-        flag=0
+        """ Function that searches for AR marker. Will not allow execution to proceed without marker location"""
 
+        flag=0
         while not rospy.is_shutdown():
             try:
                 marker_transfrom = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
@@ -84,8 +97,6 @@ class RobotPathPlanning(object):
                 else:
                     self.head.turn_head({"direction":"right","angle_deg":"10"})
                     flag=1
-
-                #rate.sleep()
                 rospy.sleep(3)
                 continue
         loc =[0]*3
@@ -97,11 +108,12 @@ class RobotPathPlanning(object):
         global machine_location
         machine_location[0]=loc[0]
         machine_location[1]=loc[1]
-        self.planning_scene.addBox("Machine",0.27,0.2,0.3,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
+        self.add_machine_object()
 
         return loc
 
         def get_eef_pos(self):
+            """ Returns EEF position in an array """
             pos = [
             self.arm.move_commander.get_current_pose().pose.position.x,
             self.arm.move_commander.get_current_pose().pose.position.y,
