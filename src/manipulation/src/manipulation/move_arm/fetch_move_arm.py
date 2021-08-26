@@ -62,7 +62,7 @@ class FetchArm(object):
         self.robot = moveit_commander.RobotCommander()
         self.pick_place = PickPlaceInterface("arm", "gripper")
         self.move_commander.set_end_effector_link("gripper_link")
-
+        self.move_commander.set_pose_reference_frame("base_link")
         # Init max speed
         self.move_commander.set_max_velocity_scaling_factor(self.MAX_VELOCITY_SCALING_FACTOR)
 
@@ -125,8 +125,6 @@ class FetchArm(object):
 
         path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)            
         self.move_commander.execute(path_retimed)  
-
-        # TODO: collision checking so controller doesn't shutdown
         
     def init_upright_constraint(self, tolerance_deg, constrained_axis):
         """ Initialise upright constraint with tolerance in degrees for all axes. """
@@ -167,53 +165,57 @@ class FetchArm(object):
         self.planning_scene.removeCollisionObject("base_keepout_1")
         self.planning_scene.removeCollisionObject("base_keepout_2")
         self.planning_scene.addBox("ground_keepout", 1.5, 1.5, 0.02, 0.0, 0.0, -0.012)
-        self.planning_scene.addBox("base_keepout_1", 0.25, 0.45, 0.001, 0.09, 0.0, 0.368)
+        self.planning_scene.addBox("base_keepout_1", 0.25, 0.5, 0.001, 0.09, 0.0, 0.368)
         self.planning_scene.addCylinder("base_keepout_2",0.001, 0.15, 0.12, 0, 0.368)
         self.planning_scene.addBox("base_side_keepout_1",0.4,0.001,0.35,0.02,0.27,0.2)
         self.planning_scene.addBox("base_side_keepout_2",0.4,0.001,0.35,0.02,-0.27,0.2)
+        self.planning_scene.addCylinder("front_side_keepout_1",0.35,0.04,0.26,0.24,0.2)
+        self.planning_scene.addCylinder("front_side_keepout_2",0.35,0.04,0.26,-0.24,0.2)       
         self.planning_scene.addBox("front_keepout", 0.001, 0.45, 0.3, 0.29, 0.0, 0.2)
 
     def cartesian_path(self, axis_position, axis):
         """ Function for movement along single axis. axis: {x, y, z}. direction: {true: positive direction, false: negative direction} """
-        self.move_commander.clear_pose_targets()
-        self.move_commander.clear_path_constraints()
+       
+        fraction=0
+        while( fraction<0.95):
+            self.move_commander.clear_pose_targets()
+            self.move_commander.clear_path_constraints()
 
-        waypoints = []
-        segments = 5
+            waypoints = []
+            segments = 10
 
-        wpose = self.move_commander.get_current_pose("gripper_link").pose 
+            wpose = self.move_commander.get_current_pose("gripper_link").pose 
 
-        # Take the differnce between current and desired position and segment for waypoints
-        if axis =="x":
-            dif = axis_position-wpose.position.x
-        elif axis =="y":
-            dif = axis_position-wpose.position.y
-        elif axis =="z":
-            dif = axis_position-wpose.position.z
-        else:
-            return "Error: Invalid axis"
-        
-        for i in range(0,segments):
+            # Take the differnce between current and desired position and segment for waypoints
             if axis =="x":
-                    wpose.position.x += dif/segments  
+                dif = axis_position-wpose.position.x
             elif axis =="y":
-                    wpose.position.y += dif/segments  
+                dif = axis_position-wpose.position.y
             elif axis =="z":
-                    wpose.position.z += dif/segments  
-            waypoints.append(copy.deepcopy(wpose))
+                dif = axis_position-wpose.position.z
+            else:
+                return "Error: Invalid axis"
+            
+            for i in range(0,segments):
+                if axis =="x":
+                        wpose.position.x += dif/segments  
+                elif axis =="y":
+                        wpose.position.y += dif/segments  
+                elif axis =="z":
+                        wpose.position.z += dif/segments  
+                waypoints.append(copy.deepcopy(wpose))
 
-        #rospy.loginfo(waypoints)
+            #rospy.loginfo(waypoints)
 
-        # We want the Cartesian path to be interpolated at a resolution of 1 cm
-        # which is why we will specify 0.01 as the eef_step in Cartesian
-        # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
-
-        (plan, fraction) = self.move_commander.compute_cartesian_path(
-                                        waypoints,   # waypoints to follow
-                                        0.01,        # eef_step
-                                        0.0)         # jump_threshold
-
-        rospy.loginfo("Waypoint fraction: %s",fraction)
+            # We want the Cartesian path to be interpolated at a resolution of 1 cm
+            # which is why we will specify 0.01 as the eef_step in Cartesian
+            # translation.  We will disable the jump threshold by setting it to 0.0 disabling:
+            (plan, fraction) = self.move_commander.compute_cartesian_path(
+                                            waypoints,   # waypoints to follow
+                                            0.01,        # eef_step
+                                            0.0)         # jump_threshold
+            if(fraction<0.95):
+                rospy.logerr("Waypoint fraction: %s",fraction)
         
         # Set max path speed
         plan_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),plan,self.MAX_VELOCITY_SCALING_FACTOR)

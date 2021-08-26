@@ -39,7 +39,7 @@ MACHINE_TO_MARKER_OFFSET = 0.12
 
 # Locations
 table_pos = [1, 0, TABLE_HEIGHT/2]
-cup_pos = [0.8, -0.25, TABLE_HEIGHT+0.06] #initial pick location
+cup_pos = [0.75, 0, TABLE_HEIGHT+0.06] #initial pick location
 #sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
@@ -65,7 +65,7 @@ class RobotPathPlanning(object):
         #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
 
         # Static machine location for simulation
-        #self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
+        self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
         
     def attach_cup(self):
         """ Attaches cup to gripper """
@@ -78,7 +78,11 @@ class RobotPathPlanning(object):
 
     def add_machine_object(self):
         self.planning_scene.addBox("Machine",0.27,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
+        #self.planning_scene.addBox("Machine_head",0.1,0.2,0.1,machine_location[0]-0.05,machine_location[1],machine_location[2]+0.11)
 
+    def remove_machine_object(self):
+        self.planning_scene.removeCollisionObject("Machine")  
+        self.planning_scene.removeCollisionObject("Machine_head")
 
     def marker_location(self):
         """ Function that searches for AR marker. Will not allow execution to proceed without marker location"""
