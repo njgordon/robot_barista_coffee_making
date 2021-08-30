@@ -33,7 +33,7 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
-    #marker_loc = robotManipulation.plan.marker_location()
+    (machine,bottle) = robotManipulation.plan.marker_location()
 
     #robotManipulation.arm.tuck_arm()
 
@@ -45,7 +45,7 @@ def main():
     #robotManipulation.push_button(marker_loc)
 
     #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
-    robotManipulation.ready_for_transport()
+    #robotManipulation.ready_for_transport()
 
 
 ################------------- Robot manipulation Class -------------################
@@ -54,6 +54,7 @@ class RobotManipulation(object):
         self.arm = FetchArm()
         self.plan = RobotPathPlanning()
 
+        # Commander planning config
         self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
         #self.arm.move_commander.set_planner_id("TRRTkConfigDefault")
         self.arm.move_commander.set_planning_time(15)
@@ -305,6 +306,8 @@ class RobotManipulation(object):
     def ready_for_transport(self):
         """ Function to place cup on base for transport """
         self.arm.move_commander.clear_path_constraints()
+
+        rospy.sleep(0.5)
         self.arm.gripper.open_gripper()
 
         # Pre-grasp approach
@@ -322,55 +325,50 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # Grasp
-        eef_pos[2]-=APPROACH_DISTANCE
-        self.arm.cartesian_path(eef_pos[2],"z")
+        self.arm.move_torso_relative(-APPROACH_DISTANCE*2)
         rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
-        # Attach cup
-        self.plan.planning_scene.attachBox('gripped_cup',0.05,0.05,0.05,0.03,0,0,'gripper_link')
         rospy.sleep(0.5)
 
         # Retreat
-        eef_pos[2]+=2*APPROACH_DISTANCE
-        self.arm.cartesian_path(eef_pos[2],"z")
+        self.arm.move_torso_relative(APPROACH_DISTANCE)
+        # Attach cup
+        self.plan.attach_cup()
 
         # Init orientation constraint
-        self.arm.init_upright_constraint(10,"z")
+        self.arm.init_upright_constraint(7,"z")
 
         # Pre-approach base
         eef_pos = cup_holder[:]
-        eef_pos[2] += 3*APPROACH_DISTANCE
+        eef_pos[2] += 5*APPROACH_DISTANCE
         base_pre_approach= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
         self.arm.solve_path_plan(base_pre_approach)
-        #rospy.loginfo(self.arm.move_commander.get_path_constraints())
         rospy.sleep(0.5)
 
         # Remove holder collision object
         self.plan.planning_scene.removeCollisionObject("cup_holder")
 
         # Place in bracket
-        #eef_pos[2]+=0.5*APPROACH_DISTANCE
-        #self.cartesian_path(eef_pos[2],"z")
-        torso = self.arm.getJointPosition("torso_lift_joint")
-        self.arm.move_torso(torso-0.05)
+        self.arm.move_torso_relative(-APPROACH_DISTANCE*3)
         self.arm.gripper.open_gripper()
         self.plan.planning_scene.removeAttachedObject("gripped_cup")
         self.plan.planning_scene.removeCollisionObject("gripped_cup")
 
         # Retreat
-        #eef_pos[2] += 2*APPROACH_DISTANCE
-        #self.cartesian_path(eef_pos[2],"z")
-        self.arm.move_torso(torso+0.05)
+        self.arm.move_torso_relative(APPROACH_DISTANCE*2)
 
         # Add back collision object
         self.plan.planning_scene.addCylinder("cup_holder",0.11,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
 
         # Tuck arm for transport
-        self.arm.tuck_arm()
+        self.arm.move_commander.clear_path_constraints()
+        #self.arm.tuck_arm()
+
+
 
 
 #####################################################################################

@@ -43,7 +43,8 @@ cup_pos = [0.75, 0, TABLE_HEIGHT+0.06] #initial pick location
 #sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
-cup_holder = [0.22,0,0.42]
+milk_location = [1, -0.25, TABLE_HEIGHT+0.05]
+cup_holder = [0.25,0,0.42]
 
 ################------------- Robot planning Class -----------------################
 class RobotPathPlanning(object):
@@ -61,7 +62,7 @@ class RobotPathPlanning(object):
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
-        self.planning_scene.addCylinder("cup_holder",0.11,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
+        self.planning_scene.addCylinder("cup_holder",0.11,0.07,cup_holder[0],cup_holder[1],cup_holder[2])
         #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
 
         # Static machine location for simulation
@@ -69,7 +70,7 @@ class RobotPathPlanning(object):
         
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.05,0.05,0.05,0.03,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.06,0.06,0.06,0.04,0,0,'gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """
@@ -90,8 +91,10 @@ class RobotPathPlanning(object):
         flag=0
         while not rospy.is_shutdown():
             try:
-                marker_transfrom = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
-                rospy.loginfo(marker_transfrom)
+                marker_transfrom_1 = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
+                marker_transfrom_2 = self.tfBuffer.lookup_transform('base_link','ar_marker_1',rospy.Time())
+                rospy.loginfo(marker_transfrom_1)
+                rospy.loginfo(marker_transfrom_2)
                 break
             except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
                 # Tilt head to find marker
@@ -103,18 +106,28 @@ class RobotPathPlanning(object):
                     flag=1
                 rospy.sleep(3)
                 continue
-        loc =[0]*3
-        loc[0] = marker_transfrom.transform.translation.x
-        loc[1] = marker_transfrom.transform.translation.y
-        loc[2] = marker_transfrom.transform.translation.z
+        loc1 =[0]*3
+        loc1[0] = marker_transfrom_1.transform.translation.x
+        loc1[1] = marker_transfrom_1.transform.translation.y
+        loc1[2] = marker_transfrom_1.transform.translation.z
+
+        loc2 =[0]*3
+        loc2[0] = marker_transfrom_2.transform.translation.x
+        loc2[1] = marker_transfrom_2.transform.translation.y
+        loc2[2] = marker_transfrom_2.transform.translation.z   
 
         # Add machine object
         global machine_location
-        machine_location[0]=loc[0]
-        machine_location[1]=loc[1]
+        machine_location[0]=loc1[0]
+        machine_location[1]=loc1[1]
         self.add_machine_object()
 
-        return loc
+        # Add milk object
+        global milk_location
+        milk_location[0]=loc2[0]
+        milk_location[1]=loc2[1]
+        self.planning_scene.addBox("milk_bottle",0.11,0.11,0.32,milk_location[0],milk_location[1],milk_location[2])
+        return loc1, loc2
 
         def get_eef_pos(self):
             """ Returns EEF position in an array """

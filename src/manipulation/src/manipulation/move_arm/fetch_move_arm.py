@@ -221,6 +221,11 @@ class FetchArm(object):
         plan_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),plan,self.MAX_VELOCITY_SCALING_FACTOR)
         self.move_commander.execute(plan,wait=True)
 
+    def move_torso_relative(self,movement):
+        """ Moves torso relative to current position """
+        torso_pos = self.getJointPosition("torso_lift_joint")
+        self.move_torso(torso_pos+movement)
+
     def joy_callback(self, msg):
         if msg.buttons[self.deadman] > 0:
             self.stop_arm()
