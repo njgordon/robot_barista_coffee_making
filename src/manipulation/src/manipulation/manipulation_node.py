@@ -33,19 +33,27 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
-    (machine,bottle) = robotManipulation.plan.marker_location()
+    (machine_loc,bottleloc) = robotManipulation.plan.marker_locations()
 
-    #robotManipulation.arm.tuck_arm()
+    robotManipulation.arm.tuck_arm(True)
 
     #####--- Manipulations ---#####
+    # 1. Pick up cup
     #eef_pos = robotManipulation.pick_cup()
+
+    # 2. Move cup to machine
     #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
 
-    #robotManipulation.open_hatch(eef_pos)
-    #robotManipulation.push_button(marker_loc)
+    # 3. Push button
+    #robotManipulation.push_button(machine_loc)
 
+    # 4. Remove cup from machine
     #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
+
+    # 5. Place cup in bracket
     #robotManipulation.ready_for_transport()
+
+    #robotManipulation.get_milk()
 
 
 ################------------- Robot manipulation Class -------------################
@@ -134,20 +142,18 @@ class RobotManipulation(object):
         rospy.loginfo("Move to machine")
         self.arm.init_upright_constraint(10,"x")
 
+        eef_pos = machine_location[:]
+
         # Move accross to machine
-        eef_pos[1] = machine_location[1]
-        #eef_pos[1] = marker_location[1]
         self.arm.cartesian_path(eef_pos[1],'y')
         rospy.sleep(0.5)
 
-        # move down if required
-        torso = self.arm.getJointPosition("torso_lift_joint")
-        self.arm.move_torso(torso-0.01)
+        # Adjust z
+        self.arm.cartesian_path(eef_pos[2]+MACHINE_TO_MARKER_Z_OFFSET,'z')
 
         # move forward
         self.plan.remove_machine_object()
-        
-        eef_pos[0] = machine_location[0] - CUP_TO_MACHINE_OFFSET
+        eef_pos[0] -= CUP_TO_MACHINE_OFFSET
         self.arm.cartesian_path(eef_pos[0],"x")
         rospy.sleep(0.5)
 
@@ -216,7 +222,7 @@ class RobotManipulation(object):
         eef_pos[1] = marker_loc[1] - 0.10
         eef_pos[2] = marker_loc[2] + 0.23
 
-        self.arm.cartesian_path(eef_pos[1]-0.1,"y")
+        #self.arm.cartesian_path(eef_pos[1]-0.1,"y")
 
         grasp_angle=[np.deg2rad(-45),0,0]
         pre_button_pose = Pose( Point(eef_pos[0], 
@@ -226,7 +232,7 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(pre_button_pose)
         rospy.sleep(1)
         
-        self.arm.gripper.open_gripper()
+        self.arm.gripper.close_gripper(0.085)
         rospy.sleep(0.5)
         self.arm.gripper.close_gripper(0.027)
 
@@ -246,7 +252,7 @@ class RobotManipulation(object):
         eef_pos[0]-=APPROACH_DISTANCE
         pre_cup_pose = Pose( Point(eef_pos[0], 
                 eef_pos[1], 
-                eef_pos[2]), 
+                eef_pos[2]+MACHINE_TO_MARKER_Z_OFFSET), 
                 euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(pre_cup_pose)
 
@@ -270,6 +276,9 @@ class RobotManipulation(object):
         self.plan.add_machine_object()
 
         # TODO: Move to milk function if required
+        #self.get_milk()
+
+        # TODO: Need to change following movements post getting milk
 
         # Move accross back to original position
         eef_pos=[cup_pos[0] - APPROACH_DISTANCE, cup_pos[1], cup_pos[2]]
@@ -295,13 +304,40 @@ class RobotManipulation(object):
         self.arm.gripper.open_gripper()
 
         # Move back
-        eef_pos[0]-=APPROACH_DISTANCE*3
+        eef_pos[0]-=APPROACH_DISTANCE
         self.arm.cartesian_path(eef_pos[0],"x")
         self.plan.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
 
     def get_milk(self):
         """ Moves cup to get milk if required """
-        pass
+        self.arm.move_commander.clear_path_constraints()
+        self.arm.init_upright_constraint(7,'x')
+
+        eef_pos = milk_location[:]
+
+        # Pre-approach milk
+        eef_pos[0]-=2*APPROACH_DISTANCE
+        eef_pos[2]+=0.18
+        milk_pre_approach= Pose( Point(eef_pos[0]+0.02, 
+                eef_pos[1], 
+                eef_pos[2]), 
+                euler_to_quat(grasp_angle)) 
+        self.arm.solve_path_plan(milk_pre_approach)
+        rospy.sleep(0.5)
+
+        # Approach milk
+        self.plan.remove_milk_object()
+
+        eef_pos[0] += APPROACH_DISTANCE*1.5
+        self.arm.cartesian_path(eef_pos[0],'x')
+
+        # TODO: calculate amount of milk required 
+        rospy.sleep(2)
+
+        # Retreat milk
+        eef_pos[0] -= APPROACH_DISTANCE*1.5
+        self.arm.cartesian_path(eef_pos[0],'x')
+        self.plan.add_milk_object()
 
     def ready_for_transport(self):
         """ Function to place cup on base for transport """
@@ -313,7 +349,6 @@ class RobotManipulation(object):
         # Pre-grasp approach
         eef_pos = cup_pos[:]
         eef_pos[2]+=2*APPROACH_DISTANCE
-        rospy.loginfo(eef_pos)
 
         grasp_angle = [0,np.deg2rad(90),0]
         pre_transport_grasp = Pose( Point(eef_pos[0], 

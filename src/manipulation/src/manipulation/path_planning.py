@@ -31,15 +31,16 @@ def euler_to_quat(euler_angles):
     quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
     return quat_object
 
-GRIPPER_ON_CUP = 0.076
+GRIPPER_ON_CUP = 0.06 #0.076
 TABLE_HEIGHT = 0.89 #1.1 
 APPROACH_DISTANCE = 0.05
 CUP_TO_MACHINE_OFFSET = 0.05
-MACHINE_TO_MARKER_OFFSET = 0.12
+MACHINE_TO_MARKER_X_OFFSET = 0.12
+MACHINE_TO_MARKER_Z_OFFSET = 0.026
 
 # Locations
-table_pos = [1, 0, TABLE_HEIGHT/2]
-cup_pos = [0.75, 0, TABLE_HEIGHT+0.06] #initial pick location
+table_pos = [1, 0, TABLE_HEIGHT/2-0.01]
+cup_pos = [0.75, 0.1, TABLE_HEIGHT+0.04] #initial pick location
 #sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
@@ -70,7 +71,7 @@ class RobotPathPlanning(object):
         
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.06,0.06,0.06,0.04,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.1,0.06,0.08,0.04,0,0,'gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """
@@ -78,14 +79,20 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject('gripped_cup')
 
     def add_machine_object(self):
-        self.planning_scene.addBox("Machine",0.27,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_OFFSET,machine_location[1],machine_location[2])
+        self.planning_scene.addBox("Machine",0.23,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_X_OFFSET,machine_location[1],machine_location[2])
         #self.planning_scene.addBox("Machine_head",0.1,0.2,0.1,machine_location[0]-0.05,machine_location[1],machine_location[2]+0.11)
 
     def remove_machine_object(self):
         self.planning_scene.removeCollisionObject("Machine")  
         self.planning_scene.removeCollisionObject("Machine_head")
 
-    def marker_location(self):
+    def add_milk_object(self):
+        self.planning_scene.addBox("milk_bottle",0.14,0.14,0.32,milk_location[0]+0.09,milk_location[1],milk_location[2]+0.05)
+
+    def remove_milk_object(self):
+        self.planning_scene.removeCollisionObject("milk_bottle")
+
+    def marker_locations(self):
         """ Function that searches for AR marker. Will not allow execution to proceed without marker location"""
 
         flag=0
@@ -126,7 +133,8 @@ class RobotPathPlanning(object):
         global milk_location
         milk_location[0]=loc2[0]
         milk_location[1]=loc2[1]
-        self.planning_scene.addBox("milk_bottle",0.11,0.11,0.32,milk_location[0],milk_location[1],milk_location[2])
+        self.add_milk_object()
+
         return loc1, loc2
 
         def get_eef_pos(self):

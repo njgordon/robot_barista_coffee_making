@@ -35,7 +35,7 @@ arm:
     - PRMkConfigDefault
     - PRMstarkConfigDefault
   projection_evaluator: joints(shoulder_pan_joint,shoulder_lift_joint)
-  longest_valid_segment_fraction: 0.005
+  longest_valid_segment_fraction: 0.001
   enforce_joint_model_state_space: true
 arm_with_torso:
   planner_configs:
@@ -51,7 +51,7 @@ arm_with_torso:
     - PRMkConfigDefault
     - PRMstarkConfigDefault
   projection_evaluator: joints(torso_lift_joint,shoulder_pan_joint)
-  longest_valid_segment_fraction: 0.005
+  longest_valid_segment_fraction: 0.001
   enforce_joint_model_state_space: true
 gripper:
   planner_configs:
