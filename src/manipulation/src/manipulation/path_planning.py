@@ -66,9 +66,11 @@ class RobotPathPlanning(object):
         self.planning_scene.addCylinder("cup_holder",0.11,0.07,cup_holder[0],cup_holder[1],cup_holder[2])
         #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
 
-        # Static machine location for simulation
-        self.planning_scene.addBox("Machine",0.3,0.2,0.2,machine_location[0],machine_location[1],machine_location[2])
-        
+        # Static machine and milk  location for simulation
+        self.add_machine_object()
+        self.add_machine_button_objects()
+        self.add_milk_object()
+
     def attach_cup(self):
         """ Attaches cup to gripper """
         self.planning_scene.attachBox('gripped_cup',0.1,0.06,0.08,0.04,0,0,'gripper_link')
@@ -86,8 +88,31 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("Machine")  
         self.planning_scene.removeCollisionObject("Machine_head")
 
+    def add_machine_button_objects(self):
+        # Right side
+        x_r_offset = 0.03
+        y_r_offset = -0.08
+        z_r_offset = 0.19
+        self.planning_scene.addCylinder("Button_1",0.07,0.07,
+            machine_location[0]+x_r_offset,
+            machine_location[1]+y_r_offset,
+            machine_location[2]+z_r_offset)
+
+        # Left side
+        x_l_offset = 0.03
+        y_l_offset = 0.08
+        z_l_offset = 0.19
+        self.planning_scene.addCylinder("Button_2",0.07,0.07,
+            machine_location[0]+x_l_offset,
+            machine_location[1]+y_l_offset,
+            machine_location[2]+z_l_offset)
+    
+    def remove_machine_button_objects(self):
+        self.planning_scene.removeCollisionObject("Button_1")
+        self.planning_scene.removeCollisionObject("Button_2")
+
     def add_milk_object(self):
-        self.planning_scene.addBox("milk_bottle",0.14,0.14,0.32,milk_location[0]+0.09,milk_location[1],milk_location[2]+0.05)
+        self.planning_scene.addBox("milk_bottle",0.15,0.15,0.33,milk_location[0]+0.07,milk_location[1],milk_location[2]+0.05)
 
     def remove_milk_object(self):
         self.planning_scene.removeCollisionObject("milk_bottle")
@@ -134,6 +159,9 @@ class RobotPathPlanning(object):
         milk_location[0]=loc2[0]
         milk_location[1]=loc2[1]
         self.add_milk_object()
+
+        # Add button objects
+        self.add_machine_button_objects()
 
         return loc1, loc2
 

@@ -33,9 +33,9 @@ def main():
 
     # Create class objects
     robotManipulation = RobotManipulation()
-    (machine_loc,bottleloc) = robotManipulation.plan.marker_locations()
+    #(machine_loc,bottleloc) = robotManipulation.plan.marker_locations()
 
-    robotManipulation.arm.tuck_arm(True)
+    #robotManipulation.arm.tuck_arm(True)
 
     #####--- Manipulations ---#####
     # 1. Pick up cup
@@ -45,6 +45,7 @@ def main():
     #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
 
     # 3. Push button
+    # TODO: test button collision objects
     #robotManipulation.push_button(machine_loc)
 
     # 4. Remove cup from machine
@@ -216,15 +217,25 @@ class RobotManipulation(object):
 
         # Close gripper
         self.arm.gripper.close_gripper(0.027)
+        grasp_angle=[np.deg2rad(-45),0,0]
+
+        # Pre-pre-button
+        eef_pos[0] = marker_loc[0] + 0.1
+        eef_pos[1] = marker_loc[1] - 0.15
+        eef_pos[2] = marker_loc[2] + 0.3
+        pre_pre_button_pose = Pose( Point(eef_pos[0], 
+                eef_pos[1], 
+                eef_pos[2]), 
+                euler_to_quat(grasp_angle)) 
+        self.arm.move_gripper_to_pose(pre_pre_button_pose)
+
+        self.plan.remove_machine_button_objects()
+        rospy.sleep(0.5)
 
         # Pre-button
         eef_pos[0] = marker_loc[0]
         eef_pos[1] = marker_loc[1] - 0.10
         eef_pos[2] = marker_loc[2] + 0.23
-
-        #self.arm.cartesian_path(eef_pos[1]-0.1,"y")
-
-        grasp_angle=[np.deg2rad(-45),0,0]
         pre_button_pose = Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -232,6 +243,7 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(pre_button_pose)
         rospy.sleep(1)
         
+        # Push button
         self.arm.gripper.close_gripper(0.085)
         rospy.sleep(0.5)
         self.arm.gripper.close_gripper(0.027)
@@ -239,6 +251,7 @@ class RobotManipulation(object):
         # Retreat
         eef_pos[0]-=APPROACH_DISTANCE*3
         self.arm.cartesian_path(eef_pos[0],"x")
+        self.plan.add_machine_button_objects()
 
     def remove_cup_from_machine(self,cup_in_machine_pos):
         """ Removes coffee, moves to milk function if required, and places cup back on table """
