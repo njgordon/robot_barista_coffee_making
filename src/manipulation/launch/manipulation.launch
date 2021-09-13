@@ -1,7 +1,11 @@
 <launch>
 
-	<!--include file="$(find fetch_moveit_config)/launch/move_group.launch"/-->
+	<include file="$(find fetch_moveit_config)/launch/move_group.launch"/>
+	<include file="$(find ar_track_alvar)/launch/fetch_indiv.launch"/>
+	<include file="$(find darknet_ros)/launch/yolo_v3.launch"/>
+	<include file="$(find sound_play)/soundplay_node.launch" />
+	
+	<node name="joint_states_listener_node" pkg="manipulation" type="joint_states_listener.py" />
+	<node name="cup_triangulation" pkg="perception" type="bb_vision" />
 
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find manipulation)/config/fetch.rviz" />
-	<!--node name="joint_states_listener_node" pkg="manipulation" type="joint_states_listener.py" /-->
 </launch>

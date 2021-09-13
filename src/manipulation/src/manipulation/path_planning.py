@@ -22,6 +22,7 @@ import actionlib # also used for move_base to pose
 # local modules for Fetch primitives
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
+from sound.fetch_sound import * 
 # vision imports
 from ar_track_alvar_msgs.msg import AlvarMarkers
 
@@ -53,6 +54,7 @@ class RobotPathPlanning(object):
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         self.head = FetchHead()
+        self.sound = FetchSound()
 
         # Create the scene
         self.planning_scene = PlanningSceneInterface("base_link")
@@ -62,7 +64,7 @@ class RobotPathPlanning(object):
 
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
-        self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
+        #self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
         self.planning_scene.addCylinder("cup_holder",0.11,0.07,cup_holder[0],cup_holder[1],cup_holder[2])
         #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
 
@@ -73,7 +75,7 @@ class RobotPathPlanning(object):
 
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.1,0.06,0.08,0.04,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.08,0.06,0.08,0.04,0,0,'gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """
@@ -117,14 +119,38 @@ class RobotPathPlanning(object):
     def remove_milk_object(self):
         self.planning_scene.removeCollisionObject("milk_bottle")
 
+    def cup_location(self):
+        """ Function that subscribes to cup location from bb node """
+        z_offset = 0.02
+        x_offset = 0.02
+        rate = rospy.Rate(5)
+
+        while not rospy.is_shutdown():
+            try:
+                cup_transform = self.tfBuffer.lookup_transform('base_link','Cup',rospy.Time())
+                #rospy.loginfo(cup_transform)
+                break
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+                rospy.logerr(e)
+                rate.sleep()
+                #rospy.sleep(1)
+
+        cup_pos=[0]*3
+        cup_pos[0] = cup_transform.transform.translation.x + x_offset
+        cup_pos[1] = cup_transform.transform.translation.y
+        cup_pos[2] = cup_transform.transform.translation.z + z_offset
+
+        return cup_pos
+        
     def marker_locations(self):
-        """ Function that searches for AR marker. Will not allow execution to proceed without marker location"""
+        """ Function that searches for AR markers. Will not allow execution to proceed without marker location"""
 
         flag=0
         while not rospy.is_shutdown():
             try:
                 marker_transfrom_1 = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
                 marker_transfrom_2 = self.tfBuffer.lookup_transform('base_link','ar_marker_1',rospy.Time())
+
                 rospy.loginfo(marker_transfrom_1)
                 rospy.loginfo(marker_transfrom_2)
                 break
@@ -138,11 +164,16 @@ class RobotPathPlanning(object):
                     flag=1
                 rospy.sleep(3)
                 continue
+        
+        self.sound.talk("I can see the objects")
+
+        # Co-ords of marker 1 
         loc1 =[0]*3
         loc1[0] = marker_transfrom_1.transform.translation.x
         loc1[1] = marker_transfrom_1.transform.translation.y
         loc1[2] = marker_transfrom_1.transform.translation.z
 
+        # Co-ords of marker 2
         loc2 =[0]*3
         loc2[0] = marker_transfrom_2.transform.translation.x
         loc2[1] = marker_transfrom_2.transform.translation.y
@@ -164,11 +195,3 @@ class RobotPathPlanning(object):
         self.add_machine_button_objects()
 
         return loc1, loc2
-
-        def get_eef_pos(self):
-            """ Returns EEF position in an array """
-            pos = [
-            self.arm.move_commander.get_current_pose().pose.position.x,
-            self.arm.move_commander.get_current_pose().pose.position.y,
-            self.arm.move_commander.get_current_pose().pose.position.z]
-            return pos

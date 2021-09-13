@@ -168,19 +168,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named fetch_pick_place
-
-# Build rule for target.
-fetch_pick_place: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 fetch_pick_place
-.PHONY : fetch_pick_place
-
-# fast build rule for target.
-fetch_pick_place/fast:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/build
-.PHONY : fetch_pick_place/fast
-
-#=============================================================================
 # Target rules for targets named manipulation_genpy
 
 # Build rule for target.
@@ -1597,33 +1584,6 @@ gtest/fast:
 	$(MAKE) -f gtest/googlemock/gtest/CMakeFiles/gtest.dir/build.make gtest/googlemock/gtest/CMakeFiles/gtest.dir/build
 .PHONY : gtest/fast
 
-src/manipulation/fetch_pick_place.o: src/manipulation/fetch_pick_place.cpp.o
-
-.PHONY : src/manipulation/fetch_pick_place.o
-
-# target to build an object file
-src/manipulation/fetch_pick_place.cpp.o:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/src/manipulation/fetch_pick_place.cpp.o
-.PHONY : src/manipulation/fetch_pick_place.cpp.o
-
-src/manipulation/fetch_pick_place.i: src/manipulation/fetch_pick_place.cpp.i
-
-.PHONY : src/manipulation/fetch_pick_place.i
-
-# target to preprocess a source file
-src/manipulation/fetch_pick_place.cpp.i:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/src/manipulation/fetch_pick_place.cpp.i
-.PHONY : src/manipulation/fetch_pick_place.cpp.i
-
-src/manipulation/fetch_pick_place.s: src/manipulation/fetch_pick_place.cpp.s
-
-.PHONY : src/manipulation/fetch_pick_place.s
-
-# target to generate assembly for a file
-src/manipulation/fetch_pick_place.cpp.s:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/src/manipulation/fetch_pick_place.cpp.s
-.PHONY : src/manipulation/fetch_pick_place.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1635,7 +1595,6 @@ help:
 	@echo "... install"
 	@echo "... list_install_components"
 	@echo "... test"
-	@echo "... fetch_pick_place"
 	@echo "... manipulation_genpy"
 	@echo "... manipulation_generate_messages_py"
 	@echo "... manipulation_genlisp"
@@ -1747,9 +1706,6 @@ help:
 	@echo "... gmock"
 	@echo "... gtest_main"
 	@echo "... gtest"
-	@echo "... src/manipulation/fetch_pick_place.o"
-	@echo "... src/manipulation/fetch_pick_place.i"
-	@echo "... src/manipulation/fetch_pick_place.s"
 .PHONY : help
 
 

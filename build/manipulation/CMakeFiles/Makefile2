@@ -60,43 +60,6 @@ CMAKE_SOURCE_DIR = /home/nathan/barista_ws/src/manipulation
 CMAKE_BINARY_DIR = /home/nathan/barista_ws/build/manipulation
 
 #=============================================================================
-# Target rules for target CMakeFiles/fetch_pick_place.dir
-
-# All Build rule for target.
-CMakeFiles/fetch_pick_place.dir/all:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/depend
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=1,2 "Built target fetch_pick_place"
-.PHONY : CMakeFiles/fetch_pick_place.dir/all
-
-# Include target in all.
-all: CMakeFiles/fetch_pick_place.dir/all
-
-.PHONY : all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/fetch_pick_place.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/nathan/barista_ws/build/manipulation/CMakeFiles 2
-	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/fetch_pick_place.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/nathan/barista_ws/build/manipulation/CMakeFiles 0
-.PHONY : CMakeFiles/fetch_pick_place.dir/rule
-
-# Convenience name for target.
-fetch_pick_place: CMakeFiles/fetch_pick_place.dir/rule
-
-.PHONY : fetch_pick_place
-
-# clean rule for target.
-CMakeFiles/fetch_pick_place.dir/clean:
-	$(MAKE) -f CMakeFiles/fetch_pick_place.dir/build.make CMakeFiles/fetch_pick_place.dir/clean
-.PHONY : CMakeFiles/fetch_pick_place.dir/clean
-
-# clean rule for target.
-clean: CMakeFiles/fetch_pick_place.dir/clean
-
-.PHONY : clean
-
-#=============================================================================
 # Target rules for target CMakeFiles/manipulation_genpy.dir
 
 # All Build rule for target.
@@ -136,7 +99,7 @@ CMakeFiles/manipulation_generate_messages_py.dir/all: CMakeFiles/_manipulation_g
 CMakeFiles/manipulation_generate_messages_py.dir/all: CMakeFiles/std_msgs_generate_messages_py.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_py.dir/build.make CMakeFiles/manipulation_generate_messages_py.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_py.dir/build.make CMakeFiles/manipulation_generate_messages_py.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=19,20 "Built target manipulation_generate_messages_py"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=17,18 "Built target manipulation_generate_messages_py"
 .PHONY : CMakeFiles/manipulation_generate_messages_py.dir/all
 
 # Build rule for subdir invocation for target.
@@ -233,7 +196,7 @@ CMakeFiles/manipulation_generate_messages_eus.dir/all: CMakeFiles/_manipulation_
 CMakeFiles/manipulation_generate_messages_eus.dir/all: CMakeFiles/std_msgs_generate_messages_eus.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_eus.dir/build.make CMakeFiles/manipulation_generate_messages_eus.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_eus.dir/build.make CMakeFiles/manipulation_generate_messages_eus.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=15,16 "Built target manipulation_generate_messages_eus"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=13,14 "Built target manipulation_generate_messages_eus"
 .PHONY : CMakeFiles/manipulation_generate_messages_eus.dir/all
 
 # Build rule for subdir invocation for target.
@@ -266,7 +229,7 @@ CMakeFiles/manipulation_generate_messages_cpp.dir/all: CMakeFiles/_manipulation_
 CMakeFiles/manipulation_generate_messages_cpp.dir/all: CMakeFiles/std_msgs_generate_messages_cpp.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_cpp.dir/build.make CMakeFiles/manipulation_generate_messages_cpp.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_cpp.dir/build.make CMakeFiles/manipulation_generate_messages_cpp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=14 "Built target manipulation_generate_messages_cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=12 "Built target manipulation_generate_messages_cpp"
 .PHONY : CMakeFiles/manipulation_generate_messages_cpp.dir/all
 
 # Build rule for subdir invocation for target.
@@ -327,11 +290,11 @@ clean: CMakeFiles/_manipulation_generate_messages_check_deps_ReturnJointStates.d
 # Target rules for target CMakeFiles/manipulation_generate_messages.dir
 
 # All Build rule for target.
-CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_lisp.dir/all
 CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_py.dir/all
 CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_eus.dir/all
 CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_cpp.dir/all
 CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_nodejs.dir/all
+CMakeFiles/manipulation_generate_messages.dir/all: CMakeFiles/manipulation_generate_messages_lisp.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages.dir/build.make CMakeFiles/manipulation_generate_messages.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages.dir/build.make CMakeFiles/manipulation_generate_messages.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num= "Built target manipulation_generate_messages"
@@ -1492,7 +1455,7 @@ CMakeFiles/manipulation_generate_messages_nodejs.dir/all: CMakeFiles/_manipulati
 CMakeFiles/manipulation_generate_messages_nodejs.dir/all: CMakeFiles/std_msgs_generate_messages_nodejs.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_nodejs.dir/build.make CMakeFiles/manipulation_generate_messages_nodejs.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_nodejs.dir/build.make CMakeFiles/manipulation_generate_messages_nodejs.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=18 "Built target manipulation_generate_messages_nodejs"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=16 "Built target manipulation_generate_messages_nodejs"
 .PHONY : CMakeFiles/manipulation_generate_messages_nodejs.dir/all
 
 # Build rule for subdir invocation for target.
@@ -2901,7 +2864,7 @@ CMakeFiles/manipulation_generate_messages_lisp.dir/all: CMakeFiles/_manipulation
 CMakeFiles/manipulation_generate_messages_lisp.dir/all: CMakeFiles/std_msgs_generate_messages_lisp.dir/all
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_lisp.dir/build.make CMakeFiles/manipulation_generate_messages_lisp.dir/depend
 	$(MAKE) -f CMakeFiles/manipulation_generate_messages_lisp.dir/build.make CMakeFiles/manipulation_generate_messages_lisp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=17 "Built target manipulation_generate_messages_lisp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=15 "Built target manipulation_generate_messages_lisp"
 .PHONY : CMakeFiles/manipulation_generate_messages_lisp.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3515,7 +3478,7 @@ gtest/googlemock/preinstall: gtest/googlemock/gtest/preinstall
 gtest/googlemock/CMakeFiles/gmock_main.dir/all:
 	$(MAKE) -f gtest/googlemock/CMakeFiles/gmock_main.dir/build.make gtest/googlemock/CMakeFiles/gmock_main.dir/depend
 	$(MAKE) -f gtest/googlemock/CMakeFiles/gmock_main.dir/build.make gtest/googlemock/CMakeFiles/gmock_main.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=6,7,8,9 "Built target gmock_main"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=4,5,6,7 "Built target gmock_main"
 .PHONY : gtest/googlemock/CMakeFiles/gmock_main.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3547,7 +3510,7 @@ clean: gtest/googlemock/CMakeFiles/gmock_main.dir/clean
 gtest/googlemock/CMakeFiles/gmock.dir/all:
 	$(MAKE) -f gtest/googlemock/CMakeFiles/gmock.dir/build.make gtest/googlemock/CMakeFiles/gmock.dir/depend
 	$(MAKE) -f gtest/googlemock/CMakeFiles/gmock.dir/build.make gtest/googlemock/CMakeFiles/gmock.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=3,4,5 "Built target gmock"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=1,2,3 "Built target gmock"
 .PHONY : gtest/googlemock/CMakeFiles/gmock.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3598,7 +3561,7 @@ gtest/googlemock/gtest/preinstall:
 gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/all: gtest/googlemock/gtest/CMakeFiles/gtest.dir/all
 	$(MAKE) -f gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/build.make gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/depend
 	$(MAKE) -f gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/build.make gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=12,13 "Built target gtest_main"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=10,11 "Built target gtest_main"
 .PHONY : gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/all
 
 # Build rule for subdir invocation for target.
@@ -3630,7 +3593,7 @@ clean: gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/clean
 gtest/googlemock/gtest/CMakeFiles/gtest.dir/all:
 	$(MAKE) -f gtest/googlemock/gtest/CMakeFiles/gtest.dir/build.make gtest/googlemock/gtest/CMakeFiles/gtest.dir/depend
 	$(MAKE) -f gtest/googlemock/gtest/CMakeFiles/gtest.dir/build.make gtest/googlemock/gtest/CMakeFiles/gtest.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=10,11 "Built target gtest"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nathan/barista_ws/build/manipulation/CMakeFiles --progress-num=8,9 "Built target gtest"
 .PHONY : gtest/googlemock/gtest/CMakeFiles/gtest.dir/all
 
 # Build rule for subdir invocation for target.

@@ -23,8 +23,10 @@ import actionlib # also used for move_base to pose
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
 from path_planning import * 
+from sound.fetch_sound import * 
 # vision imports
 from ar_track_alvar_msgs.msg import AlvarMarkers
+
 
 
 ############################################################################################################
@@ -32,36 +34,38 @@ def main():
     rospy.init_node('Manipulation')
 
     # Create class objects
-    robotManipulation = RobotManipulation()
-    #(machine_loc,bottleloc) = robotManipulation.plan.marker_locations()
+    robot = RobotManipulation()
+    (machine_loc,bottleloc) = robot.plan.marker_locations()
 
-    #robotManipulation.arm.tuck_arm(True)
+    robot.arm.tuck_arm(True)
 
     #####--- Manipulations ---#####
     # 1. Pick up cup
-    #eef_pos = robotManipulation.pick_cup()
+    #eef_pos = robot.pick_cup()
 
     # 2. Move cup to machine
-    #cup_in_machine_pos = robotManipulation.move_to_machine(eef_pos)
+    #cup_in_machine_pos = robot.move_to_machine(eef_pos)
 
     # 3. Push button
     # TODO: test button collision objects
-    #robotManipulation.push_button(machine_loc)
+    #robot.push_button(machine_loc)
 
     # 4. Remove cup from machine
-    #robotManipulation.remove_cup_from_machine(cup_in_machine_pos)
+    #robot.remove_cup_from_machine(cup_in_machine_pos)
 
     # 5. Place cup in bracket
-    #robotManipulation.ready_for_transport()
+    #robot.ready_for_transport()
 
+
+
+    #### Testting #####
     #robotManipulation.get_milk()
-
-
 ################------------- Robot manipulation Class -------------################
 class RobotManipulation(object):
     def __init__(self):
         self.arm = FetchArm()
         self.plan = RobotPathPlanning()
+        self.sound = FetchSound()
 
         # Commander planning config
         self.arm.move_commander.set_planner_id("RRTConnectkConfigDefault")
@@ -73,24 +77,9 @@ class RobotManipulation(object):
     ################------------- Manipulation functions -------------################
     def pick_cup(self):
         """ Function to pick up a cup. """
-        rospy.loginfo("Pick Cup")
+        self.sound.talk("Picking up cup.")
 
-        #rospy.sleep(8)
-        #self.head.tilt_eyes({'direction':"down"}) # Look Toward Objects
-        #rate = rospy.Rate(5)
-
-        #transCup = self.tfBuffer.lookup_transform('base_link', 'BJ_item', rospy.Time())
-        """ try:
-            transCup = tfBuffer.lookup_transform('BJ_item', 'base_link', rospy.Time())
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logerr("")
-            rate.sleep() """
-
-
-        """cup_pos[0] = transCup.transform.translation.x
-        cup_pos[1] = transCup.transform.translation.y
-        cup_pos[2] = transCup.transform.translation.z"""
-
+        cup_pos = self.plan.cup_location()
         rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_pos[0], cup_pos[1], cup_pos[2])
 
         # Pre grasp approach
@@ -140,7 +129,7 @@ class RobotManipulation(object):
         
     def move_to_machine(self, eef_pos):
         """ Function to move cup to machine. """
-        rospy.loginfo("Move to machine")
+        self.sound.talk("Moving cup to coffee machine")
         self.arm.init_upright_constraint(10,"x")
 
         eef_pos = machine_location[:]
@@ -213,6 +202,7 @@ class RobotManipulation(object):
 
     def push_button(self, marker_loc):
         """ Function to push button. """
+        self.sound.talk("Pusing button")
         eef_pos = [0]*3
 
         # Close gripper
@@ -355,6 +345,7 @@ class RobotManipulation(object):
     def ready_for_transport(self):
         """ Function to place cup on base for transport """
         self.arm.move_commander.clear_path_constraints()
+        self.sound.talk("Moving cup to base holder")
 
         rospy.sleep(0.5)
         self.arm.gripper.open_gripper()
@@ -386,7 +377,8 @@ class RobotManipulation(object):
 
         # Init orientation constraint
         self.arm.init_upright_constraint(7,"z")
-
+        self.sound.talk("Please wait while I plan my movemnts.I don't want to spill the coffee!")
+        
         # Pre-approach base
         eef_pos = cup_holder[:]
         eef_pos[2] += 5*APPROACH_DISTANCE

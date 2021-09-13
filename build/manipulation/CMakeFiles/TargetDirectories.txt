@@ -3,7 +3,6 @@
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/install.dir
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/list_install_components.dir
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/test.dir
-/home/nathan/barista_ws/build/manipulation/CMakeFiles/fetch_pick_place.dir
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/manipulation_genpy.dir
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/manipulation_generate_messages_py.dir
 /home/nathan/barista_ws/build/manipulation/CMakeFiles/manipulation_genlisp.dir

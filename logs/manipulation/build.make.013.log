@@ -1,0 +1,11 @@
+[35m[1mScanning dependencies of target fetch_pick_place[0m
+[  0%] Built target std_msgs_generate_messages_nodejs
+make[2]: *** No rule to make target '/home/nathan/barista_ws/src/manipulation/src/manipulation/fetch_pick_place.cpp', needed by 'CMakeFiles/fetch_pick_place.dir/src/manipulation/fetch_pick_place.cpp.o'.  Stop.
+CMakeFiles/Makefile2:67: recipe for target 'CMakeFiles/fetch_pick_place.dir/all' failed
+make[1]: *** [CMakeFiles/fetch_pick_place.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target _manipulation_generate_messages_check_deps_ReturnJointStates
+Makefile:140: recipe for target 'all' failed
+make: *** [all] Error 2

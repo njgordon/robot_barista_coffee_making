@@ -1,0 +1,4 @@
+make[2]: *** No rule to make target '/home/nathan/barista_ws/src/manipulation/src/manipulation/fetch_pick_place.cpp', needed by 'CMakeFiles/fetch_pick_place.dir/src/manipulation/fetch_pick_place.cpp.o'.  Stop.
+make[1]: *** [CMakeFiles/fetch_pick_place.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+make: *** [all] Error 2
