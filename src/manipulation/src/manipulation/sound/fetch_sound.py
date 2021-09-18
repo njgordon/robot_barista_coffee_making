@@ -46,7 +46,7 @@ class FetchSound(object):
         rospy.sleep(0.5)
 
         # Voice selection: If you only have the default installed use VOICE_OPTIONS[0][0]
-        self.voice = self.VOICE_OPTIONS[4][0]
+        self.voice = self.VOICE_OPTIONS[3][0]
     
     def talk(self,text):
             paramaters = {'text': text,'volume':1.0}

@@ -215,6 +215,7 @@ class FetchArm(object):
                                             0.01,        # eef_step
                                             0.0)         # jump_threshold
             if(fraction<0.95):
+                # Recalculate waypoints if 95% cannot be followed
                 rospy.logerr("Waypoint fraction: %s",fraction)
         
         # Set max path speed

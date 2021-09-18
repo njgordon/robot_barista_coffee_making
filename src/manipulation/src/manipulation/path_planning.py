@@ -75,7 +75,7 @@ class RobotPathPlanning(object):
 
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.08,0.06,0.08,0.04,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.08,0.05,0.08,0.04,0,0,'gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """

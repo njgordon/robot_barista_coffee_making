@@ -35,9 +35,9 @@ def main():
 
     # Create class objects
     robot = RobotManipulation()
-    (machine_loc,bottleloc) = robot.plan.marker_locations()
+    #(machine_loc,bottleloc) = robot.plan.marker_locations()
 
-    robot.arm.tuck_arm(True)
+    #robot.arm.tuck_arm(True)
 
     #####--- Manipulations ---#####
     # 1. Pick up cup
@@ -202,7 +202,12 @@ class RobotManipulation(object):
 
     def push_button(self, marker_loc):
         """ Function to push button. """
-        self.sound.talk("Pusing button")
+
+        self.sound.talk("Please place a pod in the hatch.")
+        rospy.sleep(1)
+        self.sound.talk("I will wait 5 seconds")
+        rospy.sleep(5)
+        self.sound.talk("Pushing button now")
         eef_pos = [0]*3
 
         # Close gripper
@@ -364,7 +369,7 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # Grasp
-        self.arm.move_torso_relative(-APPROACH_DISTANCE*2)
+        self.arm.move_torso_relative(-APPROACH_DISTANCE)
         rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -377,7 +382,7 @@ class RobotManipulation(object):
 
         # Init orientation constraint
         self.arm.init_upright_constraint(7,"z")
-        self.sound.talk("Please wait while I plan my movemnts.I don't want to spill the coffee!")
+        self.sound.talk("Please wait while I plan my movemnts. I don't want to spill the coffee!")
         
         # Pre-approach base
         eef_pos = cup_holder[:]
