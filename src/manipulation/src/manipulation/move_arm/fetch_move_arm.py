@@ -177,7 +177,7 @@ class FetchArm(object):
         """ Function for movement along single axis. axis: {x, y, z}. direction: {true: positive direction, false: negative direction} """
        
         fraction=0
-        while( fraction<0.95):
+        while(fraction<1.0):
             self.move_commander.clear_pose_targets()
             self.move_commander.clear_path_constraints()
 
@@ -214,8 +214,7 @@ class FetchArm(object):
                                             waypoints,   # waypoints to follow
                                             0.01,        # eef_step
                                             0.0)         # jump_threshold
-            if(fraction<0.95):
-                # Recalculate waypoints if 95% cannot be followed
+            if(fraction<1.0):
                 rospy.logerr("Waypoint fraction: %s",fraction)
         
         # Set max path speed

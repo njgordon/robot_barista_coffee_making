@@ -41,9 +41,10 @@ MACHINE_TO_MARKER_Z_OFFSET = 0.026
 
 # Locations
 table_pos = [1, 0, TABLE_HEIGHT/2-0.01]
-cup_pos = [0.75, 0.1, TABLE_HEIGHT+0.04] #initial pick location
-#sugar_pos = [0.9,-0.5,TABLE_HEIGHT+0.05]
 grasp_angle = [0, 0 ,0]
+
+# Static locations only used in simulation
+cup_location = [0,0,0] 
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
 milk_location = [1, -0.25, TABLE_HEIGHT+0.05]
 cup_holder = [0.25,0,0.42]
@@ -64,11 +65,9 @@ class RobotPathPlanning(object):
 
         # Add objects
         self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
-        #self.planning_scene.addCylinder("cup_1", 0.1, 0.05, cup_pos[0], cup_pos[1], cup_pos[2])
         self.planning_scene.addCylinder("cup_holder",0.11,0.07,cup_holder[0],cup_holder[1],cup_holder[2])
-        #self.planning_scene.addCylinder("Sugar",0.1, 0.05, sugar_pos[0],sugar_pos[1],sugar_pos[2])
 
-        # Static machine and milk  location for simulation
+        # Static machine and milk location for simulation
         self.add_machine_object()
         self.add_machine_button_objects()
         self.add_milk_object()
@@ -83,19 +82,19 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject('gripped_cup')
 
     def add_machine_object(self):
-        self.planning_scene.addBox("Machine",0.23,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_X_OFFSET,machine_location[1],machine_location[2])
-        #self.planning_scene.addBox("Machine_head",0.1,0.2,0.1,machine_location[0]-0.05,machine_location[1],machine_location[2]+0.11)
+        self.planning_scene.addBox("machine",0.23,0.21,0.32,machine_location[0]+MACHINE_TO_MARKER_X_OFFSET,machine_location[1],machine_location[2])
+        #self.planning_scene.addBox("machine_head",0.1,0.2,0.1,machine_location[0]-0.05,machine_location[1],machine_location[2]+0.11)
 
     def remove_machine_object(self):
-        self.planning_scene.removeCollisionObject("Machine")  
-        self.planning_scene.removeCollisionObject("Machine_head")
+        self.planning_scene.removeCollisionObject("machine")  
+        self.planning_scene.removeCollisionObject("machine_head")
 
     def add_machine_button_objects(self):
         # Right side
         x_r_offset = 0.03
         y_r_offset = -0.08
         z_r_offset = 0.19
-        self.planning_scene.addCylinder("Button_1",0.07,0.07,
+        self.planning_scene.addCylinder("button_1",0.06,0.06,
             machine_location[0]+x_r_offset,
             machine_location[1]+y_r_offset,
             machine_location[2]+z_r_offset)
@@ -104,14 +103,14 @@ class RobotPathPlanning(object):
         x_l_offset = 0.03
         y_l_offset = 0.08
         z_l_offset = 0.19
-        self.planning_scene.addCylinder("Button_2",0.07,0.07,
+        self.planning_scene.addCylinder("button_2",0.06,0.06,
             machine_location[0]+x_l_offset,
             machine_location[1]+y_l_offset,
             machine_location[2]+z_l_offset)
     
     def remove_machine_button_objects(self):
-        self.planning_scene.removeCollisionObject("Button_1")
-        self.planning_scene.removeCollisionObject("Button_2")
+        self.planning_scene.removeCollisionObject("button_1")
+        self.planning_scene.removeCollisionObject("button_2")
 
     def add_milk_object(self):
         self.planning_scene.addBox("milk_bottle",0.15,0.15,0.33,milk_location[0]+0.07,milk_location[1],milk_location[2]+0.05)
@@ -119,28 +118,35 @@ class RobotPathPlanning(object):
     def remove_milk_object(self):
         self.planning_scene.removeCollisionObject("milk_bottle")
 
-    def cup_location(self):
-        """ Function that subscribes to cup location from bb node """
-        z_offset = 0.02
-        x_offset = 0.02
-        rate = rospy.Rate(5)
+    def add_cup_object(self):
+        self.planning_scene.addCylinder("cup", 0.1, 0.05, cup_location[0], cup_location[1], cup_location[2])
 
-        while not rospy.is_shutdown():
-            try:
-                cup_transform = self.tfBuffer.lookup_transform('base_link','Cup',rospy.Time())
-                #rospy.loginfo(cup_transform)
-                break
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                rospy.logerr(e)
-                rate.sleep()
-                #rospy.sleep(1)
+    def remove_cup_object(self):
+        self.planning_scene.removeCollisionObject("cup")
+    
+    def find_cup_location(self):
+        """ Function that subscribes to cup location from bb node, which triangulates cup from Yolo """
+        # z_offset = 0.02
+        # x_offset = 0.02
+        # #rate = rospy.Rate(5)
 
-        cup_pos=[0]*3
-        cup_pos[0] = cup_transform.transform.translation.x + x_offset
-        cup_pos[1] = cup_transform.transform.translation.y
-        cup_pos[2] = cup_transform.transform.translation.z + z_offset
-
-        return cup_pos
+        # while not rospy.is_shutdown():
+        #     try:
+        #         cup_transform = self.tfBuffer.lookup_transform('base_link','Cup',rospy.Time())
+        #         self.sound.talk("I can see the objects")
+        #         break
+        #     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+        #         rospy.logerr(e)
+        #         #rate.sleep()
+        #         rospy.sleep(1)
+                
+        # global cup_location
+        # cup_location[0] = cup_transform.transform.translation.x + x_offset
+        # cup_location[1] = cup_transform.transform.translation.y
+        # cup_location[2] = cup_transform.transform.translation.z + z_offset
+        global cup_location
+        cup_location = [0.75, 0.1, TABLE_HEIGHT+0.04] #initial pick location
+        return cup_location
         
     def marker_locations(self):
         """ Function that searches for AR markers. Will not allow execution to proceed without marker location"""
@@ -162,10 +168,8 @@ class RobotPathPlanning(object):
                 else:
                     self.head.turn_head({"direction":"right","angle_deg":"10"})
                     flag=1
-                rospy.sleep(3)
+                rospy.sleep(1)
                 continue
-        
-        self.sound.talk("I can see the objects")
 
         # Co-ords of marker 1 
         loc1 =[0]*3
