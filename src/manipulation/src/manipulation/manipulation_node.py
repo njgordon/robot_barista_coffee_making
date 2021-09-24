@@ -35,7 +35,7 @@ def main():
 
     # Create class and finde scene objects
     robot = RobotManipulation()
-    #(machine_loc, bottleloc) = robot.plan.marker_locations()
+    (machine_loc, bottleloc) = robot.plan.marker_locations()
     global cup_location # required for various functions
     cup_location = robot.plan.find_cup_location()
 
@@ -44,19 +44,19 @@ def main():
 
     #########--- Manipulations ---#########
     # 1. Pick up cup
-    #eef_pos = robot.pick_cup()
+    eef_pos = robot.pick_cup()
 
     # 2. Move cup to machine
-    #cup_in_machine_pos = robot.move_to_machine(eef_pos)
+    cup_in_machine_pos = robot.move_to_machine(eef_pos)
 
     # 3. Push button
     #robot.push_button(machine_loc)
 
     # 4. Remove cup from machine
-    #robot.remove_cup_from_machine(cup_in_machine_pos)
+    cup_on_table_pos = robot.remove_cup_from_machine(cup_in_machine_pos)
 
     # 5. Place cup in bracket
-    robot.ready_for_transport()
+    robot.ready_for_transport(cup_on_table_pos)
 
     #### Testting #####
     #robotManipulation.get_milk()
@@ -81,9 +81,6 @@ class RobotManipulation(object):
         """ Function to pick up a cup. """
         self.sound.talk("Picking up cup.")
 
-        rospy.loginfo("cup 1 (x,y,z) = %s,%s,%s", cup_location[0], cup_location[1], cup_location[2])
-        self.plan.add_cup_object()
-
         # Pre grasp approach
         eef_pos=[cup_location[0]- APPROACH_DISTANCE*3, cup_location[1],cup_location[2]]
         cup_pre_grasp_pose = Pose( Point(eef_pos[0], 
@@ -93,7 +90,7 @@ class RobotManipulation(object):
         self.arm.move_gripper_to_pose(cup_pre_grasp_pose)
         # Make sure gripper is open
         self.arm.gripper.open_gripper()
-        self.plan.planning_scene.removeCollisionObject("cup_1")
+        self.plan.remove_cup_object()
         rospy.sleep(0.5)
 
         # Approach
@@ -136,9 +133,6 @@ class RobotManipulation(object):
         self.arm.cartesian_path(eef_pos[1],'y')
         rospy.sleep(0.5)
 
-        # Adjust z
-        self.arm.cartesian_path(eef_pos[2]+MACHINE_TO_MARKER_Z_OFFSET+0.03,'z')
-
         # move forward
         self.plan.remove_machine_object()
         eef_pos[0] -= CUP_TO_MACHINE_OFFSET
@@ -146,6 +140,7 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # place cup
+        self.arm.move_torso_relative(-0.01)   # Adjust z
         cup_in_machine = eef_pos[:] # copy values
         self.arm.gripper.open_gripper()
         self.plan.deposit_cup()
@@ -294,6 +289,7 @@ class RobotManipulation(object):
         # Place back on table
         eef_pos[0]+=APPROACH_DISTANCE
         self.arm.cartesian_path(eef_pos[0],"x")
+        self.arm.move_torso_relative(-0.02)   # Adjust z
 
         # eef_pos = cup_location[:]
         # back_on_table = Pose( Point(eef_pos[0], 
@@ -303,7 +299,7 @@ class RobotManipulation(object):
         #self.arm.move_gripper_to_pose(place_coffee_on_table)
         #self.arm.solve_path_plan(back_on_table)
         #rospy.sleep(0.5)
-
+        cup_on_table_pos = eef_pos[:]
         self.plan.deposit_cup()
         rospy.sleep(0.5)
 
@@ -311,9 +307,11 @@ class RobotManipulation(object):
         self.arm.gripper.open_gripper()
 
         # Move back
-        eef_pos[0]-=APPROACH_DISTANCE
+        eef_pos[0]-=APPROACH_DISTANCE*2
         self.arm.cartesian_path(eef_pos[0],"x")
         self.plan.add_cup_object()
+
+        return cup_on_table_pos
 
     def get_milk(self):
         """ Moves cup to get milk if required """
@@ -346,17 +344,18 @@ class RobotManipulation(object):
         self.arm.cartesian_path(eef_pos[0],'x')
         self.plan.add_milk_object()
 
-    def ready_for_transport(self):
+    def ready_for_transport(self,cup_on_table_pos):
         """ Function to place cup on base for transport """
         self.arm.move_commander.clear_path_constraints()
         self.arm.move_commander.clear_pose_targets()
-        self.sound.talk("Moving cup to base holder")
+        #self.sound.talk("Moving cup to base holder")
 
-        rospy.sleep(0.5)
         self.arm.gripper.open_gripper()
+        rospy.sleep(1)
 
         # Pre-grasp approach
-        eef_pos = cup_location[:]
+        eef_pos = cup_on_table_pos[:]
+        eef_pos[2]=0.96 #NB: DEPENDANT ON CUP
         eef_pos[2]+=2*APPROACH_DISTANCE
 
         top_grasp_angle = [0,np.deg2rad(90),0]
@@ -370,7 +369,7 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # Grasp
-        self.arm.move_torso_relative(-APPROACH_DISTANCE)
+        self.arm.move_torso_relative(-APPROACH_DISTANCE*2)
         rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -399,7 +398,9 @@ class RobotManipulation(object):
         self.plan.planning_scene.removeCollisionObject("cup_holder")
 
         # Place in bracket
-        self.arm.move_torso_relative(-APPROACH_DISTANCE*3)
+        self.arm.move_torso_relative(-APPROACH_DISTANCE*2.5)
+
+        rospy.sleep(0.5)
         self.arm.gripper.open_gripper()
         self.plan.planning_scene.removeAttachedObject("gripped_cup")
         self.plan.planning_scene.removeCollisionObject("gripped_cup")
@@ -408,11 +409,11 @@ class RobotManipulation(object):
         self.arm.move_torso_relative(APPROACH_DISTANCE*2)
 
         # Add back collision object
-        self.plan.planning_scene.addCylinder("cup_holder",0.11,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
+        self.plan.planning_scene.addCylinder("cup_holder",0.2,0.05,cup_holder[0],cup_holder[1],cup_holder[2])
 
         # Tuck arm for transport
         self.arm.move_commander.clear_path_constraints()
-        self.arm.tuck_arm()
+        #self.arm.tuck_arm()
 
 
 

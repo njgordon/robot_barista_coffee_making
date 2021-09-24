@@ -434,7 +434,7 @@ class FetchArm(object):
 # adapted from Enrique's examples
 class FetchGripper(object):
 
-    OPEN_POSITION = 0.10
+    OPEN_POSITION = 0.2
     CLOSED_POSITION = 0.027
     MAX_EFFORT = 0
 

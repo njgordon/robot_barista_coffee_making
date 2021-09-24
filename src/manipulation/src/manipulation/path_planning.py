@@ -44,10 +44,10 @@ table_pos = [1, 0, TABLE_HEIGHT/2-0.01]
 grasp_angle = [0, 0 ,0]
 
 # Static locations only used in simulation
-cup_location = [0,0,0] 
+cup_location = [0.75, 0.1, TABLE_HEIGHT+0.04] 
 machine_location = [1, 0.25, TABLE_HEIGHT+0.05]
 milk_location = [1, -0.25, TABLE_HEIGHT+0.05]
-cup_holder = [0.25,0,0.42]
+cup_holder = [0.26,0,0.42]
 
 ################------------- Robot planning Class -----------------################
 class RobotPathPlanning(object):
@@ -60,7 +60,8 @@ class RobotPathPlanning(object):
         # Create the scene
         self.planning_scene = PlanningSceneInterface("base_link")
         self.planning_scene.removeCollisionObject("table")
-        self.planning_scene.removeCollisionObject("cup_1")
+        self.planning_scene.removeCollisionObject("cup")
+        self.planning_scene.removeCollisionObject("cup_holder")
         self.deposit_cup() # removes gripped cup if still attached
 
         # Add objects
@@ -74,7 +75,7 @@ class RobotPathPlanning(object):
 
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.08,0.05,0.08,0.04,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.08,0.05,0.08,0.06,0,0,'gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """
@@ -119,33 +120,34 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("milk_bottle")
 
     def add_cup_object(self):
-        self.planning_scene.addCylinder("cup", 0.1, 0.05, cup_location[0], cup_location[1], cup_location[2])
+        self.planning_scene.addCylinder("cup", 0.13, 0.05, cup_location[0], cup_location[1], cup_location[2])
 
     def remove_cup_object(self):
         self.planning_scene.removeCollisionObject("cup")
     
     def find_cup_location(self):
         """ Function that subscribes to cup location from bb node, which triangulates cup from Yolo """
-        # z_offset = 0.02
-        # x_offset = 0.02
-        # #rate = rospy.Rate(5)
+        z_offset = 0.02
+        x_offset = 0.02
+        #rate = rospy.Rate(5)
 
-        # while not rospy.is_shutdown():
-        #     try:
-        #         cup_transform = self.tfBuffer.lookup_transform('base_link','Cup',rospy.Time())
-        #         self.sound.talk("I can see the objects")
-        #         break
-        #     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-        #         rospy.logerr(e)
-        #         #rate.sleep()
-        #         rospy.sleep(1)
+        while not rospy.is_shutdown():
+            try:
+                cup_transform = self.tfBuffer.lookup_transform('base_link','cup',rospy.Time())
+                #self.sound.talk("I can see the objects")
+                break
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+                rospy.logerr(e)
+                #rate.sleep()
+                rospy.sleep(1)
                 
-        # global cup_location
-        # cup_location[0] = cup_transform.transform.translation.x + x_offset
-        # cup_location[1] = cup_transform.transform.translation.y
-        # cup_location[2] = cup_transform.transform.translation.z + z_offset
         global cup_location
-        cup_location = [0.75, 0.1, TABLE_HEIGHT+0.04] #initial pick location
+        cup_location[0] = cup_transform.transform.translation.x + x_offset
+        cup_location[1] = cup_transform.transform.translation.y
+        cup_location[2] = cup_transform.transform.translation.z + z_offset
+
+        rospy.loginfo("cup(x,y,z) = %s,%s,%s", cup_location[0], cup_location[1], cup_location[2])
+        self.add_cup_object()
         return cup_location
         
     def marker_locations(self):
@@ -156,9 +158,6 @@ class RobotPathPlanning(object):
             try:
                 marker_transfrom_1 = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
                 marker_transfrom_2 = self.tfBuffer.lookup_transform('base_link','ar_marker_1',rospy.Time())
-
-                rospy.loginfo(marker_transfrom_1)
-                rospy.loginfo(marker_transfrom_2)
                 break
             except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
                 # Tilt head to find marker

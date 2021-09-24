@@ -120,7 +120,7 @@ void BroadcastItems()
   
     transformStamped.header.stamp = ros::Time::now();
     transformStamped.header.frame_id = "head_camera_rgb_optical_frame";
-    transformStamped.child_frame_id = "Cup";
+    transformStamped.child_frame_id = "cup";
     transformStamped.transform.translation.x = x/1000;
     transformStamped.transform.translation.y = y/1000;
     transformStamped.transform.translation.z = z/1000;
@@ -130,8 +130,8 @@ void BroadcastItems()
     transformStamped.transform.rotation.w = q.w();
 
     // Broadcast if cup
-    std::string strCup ("cup");
-    if(!strCup.compare(msgBB.bounding_boxes[idx_object].Class.c_str()))
+    std::string str_cup("cup");
+    if( !str_cup.compare(msgBB.bounding_boxes[idx_object].Class.c_str()) ) //&& msgBB.bounding_boxes[idx_object].probability>0.5
     {
       static tf2_ros::TransformBroadcaster br;
       br.sendTransform(transformStamped);
