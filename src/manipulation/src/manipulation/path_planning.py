@@ -40,7 +40,7 @@ MACHINE_TO_MARKER_X_OFFSET = 0.12
 MACHINE_TO_MARKER_Z_OFFSET = 0.026
 
 # Locations
-table_pos = [1, 0, TABLE_HEIGHT/2-0.01]
+table_pos = [0.9, 0, TABLE_HEIGHT/2-0.01]
 grasp_angle = [0, 0 ,0]
 
 # Static locations only used in simulation
@@ -75,7 +75,10 @@ class RobotPathPlanning(object):
 
     def attach_cup(self):
         """ Attaches cup to gripper """
-        self.planning_scene.attachBox('gripped_cup',0.08,0.05,0.08,0.06,0,0,'gripper_link')
+        self.planning_scene.attachBox('gripped_cup',0.08,0.05,0.12,0.04,0,0,'gripper_link','gripper_link')
+
+    def attach_cup_top(self):
+        self.planning_scene.attachBox('gripped_cup',0.12,0.05,0.08,0.04,0,0,'gripper_link','gripper_link')
 
     def deposit_cup(self):
         """ Removes gripped cup from planning scene """
@@ -129,16 +132,22 @@ class RobotPathPlanning(object):
         """ Function that subscribes to cup location from bb node, which triangulates cup from Yolo """
         z_offset = 0.02
         x_offset = 0.02
-        #rate = rospy.Rate(5)
+        rospy.sleep(3)
 
+        flag=0
         while not rospy.is_shutdown():
             try:
                 cup_transform = self.tfBuffer.lookup_transform('base_link','cup',rospy.Time())
-                #self.sound.talk("I can see the objects")
+                self.sound.talk("I can see the objects")
                 break
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                rospy.logerr(e)
-                #rate.sleep()
+                # Tilt head to find cup
+                if flag:
+                    self.head.tilt_eyes({"direction":"down","angle_deg":"5"})
+                    flag=0
+                else:
+                    #self.head.tilt_eyes({"direction":"up","angle_deg":"10"})
+                    flag=1
                 rospy.sleep(1)
                 
         global cup_location
@@ -152,6 +161,7 @@ class RobotPathPlanning(object):
         
     def marker_locations(self):
         """ Function that searches for AR markers. Will not allow execution to proceed without marker location"""
+        #self.head.turn_head()
 
         flag=0
         while not rospy.is_shutdown():
@@ -167,7 +177,7 @@ class RobotPathPlanning(object):
                 else:
                     self.head.turn_head({"direction":"right","angle_deg":"10"})
                     flag=1
-                rospy.sleep(1)
+                rospy.sleep(3)
                 continue
 
         # Co-ords of marker 1 

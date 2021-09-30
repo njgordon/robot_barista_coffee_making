@@ -115,16 +115,20 @@ class FetchArm(object):
 
     def solve_path_plan(self, pose_goal):
         """ Solve path plan and execure with constraints applied"""
-        # Clear 
-        self.move_commander.clear_pose_targets()
 
-        self.move_commander.set_start_state_to_current_state()
-        self.move_commander.set_pose_target(pose_goal,"gripper_link")
+        while True:
+            # Clear 
+            self.move_commander.clear_pose_targets()
 
-        path = self.move_commander.plan()
+            self.move_commander.set_start_state_to_current_state()
+            self.move_commander.set_pose_target(pose_goal,"gripper_link")
 
-        path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)            
-        self.move_commander.execute(path_retimed)  
+            path = self.move_commander.plan()
+            
+            if  path.joint_trajectory.points:
+                path_retimed = self.move_commander.retime_trajectory(self.move_commander.get_current_state(),path,self.MAX_VELOCITY_SCALING_FACTOR)            
+                self.move_commander.execute(path_retimed)  
+                break
         
     def init_upright_constraint(self, tolerance_deg, constrained_axis):
         """ Initialise upright constraint with tolerance in degrees for all axes. """
