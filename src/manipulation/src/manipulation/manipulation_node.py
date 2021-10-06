@@ -35,29 +35,30 @@ def main():
 
     # Create class and finde scene objects
     robot = RobotManipulation()
-    (machine_loc, bottleloc) = robot.plan.marker_locations()
+    (machine_location, bottleloc) = robot.plan.marker_locations()
     global cup_location # required for various functions
-    cup_location = robot.plan.find_cup_location()
+    #cup_location = robot.plan.find_cup_location()
 
     # Arm tuck if required
     #robot.arm.tuck_arm(True)
 
     #########--- Manipulations ---#########
     # 1. Pick up cup
-    eef_pos = robot.pick_cup()
+    #eef_pos = robot.pick_cup()
 
     # 2. Move cup to machine
-    cup_in_machine_pos = robot.move_to_machine(eef_pos)
+    #cup_in_machine_pos = robot.move_to_machine(eef_pos)
 
     # 3. Push button
-    robot.push_button(machine_loc)
+    coffee_size = False # false = small, true=large
+    robot.push_button(machine_location, coffee_size)
 
     # 4. Remove cup from machine
-    milk_requirement = True # specify if milk is required
-    cup_on_table_pos = robot.remove_cup_from_machine(cup_in_machine_pos, milk_requirement)
+    #milk_requirement = False # specify if milk is required
+    #cup_on_table_pos = robot.remove_cup_from_machine(cup_in_machine_pos, milk_requirement)
 
     # 5. Place cup in bracket
-    robot.ready_for_transport(cup_on_table_pos)
+    #robot.ready_for_transport(cup_on_table_pos)
 
 
 ################------------- Robot manipulation Class -------------################
@@ -92,7 +93,7 @@ class RobotManipulation(object):
         rospy.sleep(0.5)
 
         # Approach
-        self.arm.init_upright_constraint(7,"x")
+        self.arm.init_upright_constraint(10,"x")
         self.plan.remove_cup_object()
         eef_pos[0] = cup_location[0]
         self.arm.cartesian_path(eef_pos[0],"x")
@@ -103,11 +104,12 @@ class RobotManipulation(object):
         #torso = self.arm.getJointPosition("torso_lift_joint")
         #self.arm.move_torso(torso+0.06)
         eef_pos[2]+=0.05
-        lift = Pose( Point(eef_pos[0], 
-                eef_pos[1], 
-                eef_pos[2]), 
-                euler_to_quat(grasp_angle)) 
-        self.arm.move_gripper_to_pose(lift)
+        # lift = Pose( Point(eef_pos[0], 
+        #         eef_pos[1], 
+        #         eef_pos[2]), 
+        #         euler_to_quat(grasp_angle)) 
+        # self.arm.move_gripper_to_pose(lift)
+        self.arm.cartesian_path(eef_pos[2],"z")
         rospy.sleep(0.5)
 
         self.plan.attach_cup()
@@ -144,7 +146,7 @@ class RobotManipulation(object):
 
         # move gripper back
         eef_pos[0]-= APPROACH_DISTANCE*3
-        self.arm.cartesian_path(eef_pos[0],'x')   
+        self.arm.cartesian_path(eef_pos[0],"x")   
         rospy.sleep(0.5)
 
         # Add machine back
@@ -186,7 +188,7 @@ class RobotManipulation(object):
                 euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(hatch_pose) 
 
-    def push_button(self, marker_loc):
+    def push_button(self, marker_loc, coffee_size):
         """ Function to push button. """
 
         #self.sound.talk("Please place a pod in the hatch.")
@@ -197,25 +199,32 @@ class RobotManipulation(object):
 
         # Close gripper
         self.arm.gripper.close_gripper(0.027)
-        grasp_angle=[np.deg2rad(-45),0,0]
 
-        # Pre-pre-button
-        eef_pos[0] = marker_loc[0] + 0.1
-        eef_pos[1] = marker_loc[1] - 0.15
+        # Pre-button location
+        if coffee_size:
+            eef_pos[1] = marker_loc[1] - 0.15 # right button
+            grasp_angle=[np.deg2rad(-45),0,0]
+        else:
+            eef_pos[1] = marker_loc[1] + 0.15 #left button
+            grasp_angle = [np.deg2rad(45),0,0]
+
+        eef_pos[0] = marker_loc[0]
         eef_pos[2] = marker_loc[2] + 0.3
         pre_pre_button_pose = Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
                 euler_to_quat(grasp_angle)) 
         self.arm.move_gripper_to_pose(pre_pre_button_pose)
-
         self.plan.remove_machine_button_objects()
         rospy.sleep(0.5)
 
-        # Pre-button
-        eef_pos[0] = marker_loc[0]
-        eef_pos[1] = marker_loc[1] - 0.10
-        eef_pos[2] = marker_loc[2] + 0.23
+        # Button location
+        eef_pos[0] = marker_loc[0] + 0.01
+        if coffee_size:
+            eef_pos[1] = marker_loc[1] - 0.12
+        else:
+            eef_pos[1] = marker_loc[1] + 0.11
+        eef_pos[2] = marker_loc[2] + 0.225
         pre_button_pose = Pose( Point(eef_pos[0], 
                 eef_pos[1], 
                 eef_pos[2]), 
@@ -230,7 +239,6 @@ class RobotManipulation(object):
 
         # Retreat
         eef_pos[0]-=APPROACH_DISTANCE*3
-        self.arm.init_upright_constraint(10,'x')
         self.arm.cartesian_path(eef_pos[0],"x")
         self.plan.add_machine_button_objects()
 
@@ -253,8 +261,7 @@ class RobotManipulation(object):
         # Approach
         self.arm.init_upright_constraint(7,"x")
         eef_pos[0]+=APPROACH_DISTANCE
-        self.plan.planning_scene.removeCollisionObject('cup_in_machine')
-        self.plan.planning_scene.removeCollisionObject("machine")
+        self.plan.remove_machine_object()
         self.arm.cartesian_path(eef_pos[0],"x")     
         rospy.sleep(0.5)
 
@@ -299,7 +306,7 @@ class RobotManipulation(object):
 
         # Move back
         self.arm.init_upright_constraint(7,'x')
-        eef_pos[0]-=APPROACH_DISTANCE*3
+        eef_pos[0]-=APPROACH_DISTANCE*2
         self.arm.cartesian_path(eef_pos[0],"x")
         self.plan.add_cup_object()
 
@@ -314,7 +321,7 @@ class RobotManipulation(object):
 
         # Pre-approach milk
         eef_pos[0]-=2*APPROACH_DISTANCE
-        eef_pos[2]+=0.15
+        eef_pos[2]+=0.14
         milk_grasp_angle = [0,np.deg2rad(10),0]
         milk_pre_approach= Pose( Point(eef_pos[0], 
                 eef_pos[1], 
@@ -406,6 +413,7 @@ class RobotManipulation(object):
         # Tuck arm for transport
         self.arm.move_commander.clear_path_constraints()
         self.arm.tuck_arm(True)
+        self.sound.talk("I am ready to deliver the coffeeeeee")
 
 
 

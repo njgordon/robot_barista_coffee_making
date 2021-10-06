@@ -62,10 +62,11 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("table")
         self.planning_scene.removeCollisionObject("cup")
         self.planning_scene.removeCollisionObject("cup_holder")
+        self.planning_scene.removeCollisionObject('cup_in_machine')
         self.deposit_cup() # removes gripped cup if still attached
 
         # Add objects
-        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.01, table_pos[0], table_pos[1], table_pos[2])
+        self.planning_scene.addBox("table", 0.6, 2.0, TABLE_HEIGHT-0.02, table_pos[0], table_pos[1], table_pos[2])
         self.planning_scene.addCylinder("cup_holder",0.11,0.07,cup_holder[0],cup_holder[1],cup_holder[2])
 
         # Static machine and milk location for simulation
@@ -92,6 +93,7 @@ class RobotPathPlanning(object):
     def remove_machine_object(self):
         self.planning_scene.removeCollisionObject("machine")  
         self.planning_scene.removeCollisionObject("machine_head")
+        self.planning_scene.removeCollisionObject("cup_in_machine")
 
     def add_machine_button_objects(self):
         # Right side
@@ -130,11 +132,11 @@ class RobotPathPlanning(object):
     
     def find_cup_location(self):
         """ Function that subscribes to cup location from bb node, which triangulates cup from Yolo """
+        # Centre head
+        
         z_offset = 0.02
         x_offset = 0.02
-        rospy.sleep(3)
 
-        flag=0
         while not rospy.is_shutdown():
             try:
                 cup_transform = self.tfBuffer.lookup_transform('base_link','cup',rospy.Time())
@@ -142,12 +144,7 @@ class RobotPathPlanning(object):
                 break
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                 # Tilt head to find cup
-                if flag:
-                    self.head.tilt_eyes({"direction":"down","angle_deg":"5"})
-                    flag=0
-                else:
-                    #self.head.tilt_eyes({"direction":"up","angle_deg":"10"})
-                    flag=1
+                self.head.tilt_eyes({"direction":"down","angle_deg":"5"})
                 rospy.sleep(1)
                 
         global cup_location
@@ -161,12 +158,32 @@ class RobotPathPlanning(object):
         
     def marker_locations(self):
         """ Function that searches for AR markers. Will not allow execution to proceed without marker location"""
-        #self.head.turn_head()
+        
+        # Centre head
+        #self.head.reset_head()
+        #rospy.sleep(1)
 
+        # Look for first marker
         flag=0
         while not rospy.is_shutdown():
             try:
                 marker_transfrom_1 = self.tfBuffer.lookup_transform('base_link','ar_marker_0',rospy.Time())
+                break
+            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
+                # Tilt head to find marker
+                if flag:
+                    self.head.turn_head({"direction":"left","angle_deg":"10"})
+                    flag=0
+                else: 
+                    self.head.turn_head({"direction":"right","angle_deg":"10"})
+                    flag=1
+                rospy.sleep(3)
+                continue
+        
+        # Look for second marker
+        flag=0
+        while not rospy.is_shutdown():
+            try:
                 marker_transfrom_2 = self.tfBuffer.lookup_transform('base_link','ar_marker_1',rospy.Time())
                 break
             except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:       
@@ -178,7 +195,7 @@ class RobotPathPlanning(object):
                     self.head.turn_head({"direction":"right","angle_deg":"10"})
                     flag=1
                 rospy.sleep(3)
-                continue
+                continue        
 
         # Co-ords of marker 1 
         loc1 =[0]*3
