@@ -28,6 +28,7 @@ from ar_track_alvar_msgs.msg import AlvarMarkers
 
 ################------------- Global Functions and variables -----------------################    
 def euler_to_quat(euler_angles):
+    """ Convertes Euler orientation to Quaternion """
     hold_quat_array =tf.transformations.quaternion_from_euler(euler_angles[0], euler_angles[1] , euler_angles[2])
     quat_object= Quaternion(hold_quat_array [0], hold_quat_array [1], hold_quat_array [2], hold_quat_array [3])
     return quat_object
@@ -159,7 +160,7 @@ class RobotPathPlanning(object):
     def marker_locations(self):
         """ Function that searches for AR markers. Will not allow execution to proceed without marker location"""
         
-        # Centre head
+        # Centre head if required
         #self.head.reset_head()
         #rospy.sleep(1)
 
