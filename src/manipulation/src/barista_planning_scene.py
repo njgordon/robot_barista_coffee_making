@@ -51,7 +51,7 @@ milk_location = [1, -0.25, TABLE_HEIGHT+0.05]
 cup_holder = [0.26,0,0.42]
 
 ################------------- Robot planning Class -----------------################
-class RobotPathPlanning(object):
+class RobotPlanningScene(object):
     def __init__(self):
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -126,7 +126,7 @@ class RobotPathPlanning(object):
         self.planning_scene.removeCollisionObject("milk_bottle")
 
     def add_cup_object(self):
-        self.planning_scene.addCylinder("cup", 0.13, 0.05, cup_location[0], cup_location[1], cup_location[2])
+        self.planning_scene.addCylinder("cup", 0.13, 0.06, cup_location[0], cup_location[1], cup_location[2])
 
     def remove_cup_object(self):
         self.planning_scene.removeCollisionObject("cup")

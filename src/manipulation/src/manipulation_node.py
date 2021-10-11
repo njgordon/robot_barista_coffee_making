@@ -24,24 +24,25 @@ import actionlib # also used for move_base to pose
 # local modules for Fetch primitives
 from move_arm.fetch_move_arm import *
 from move_head.fetch_move_head import *
-from path_planning import * 
+from barista_planning_scene import * 
 from sound.fetch_sound import * 
 # vision imports
 from ar_track_alvar_msgs.msg import AlvarMarkers
 
 
-
-
 ############################################################################################################
 def main():
-    rospy.init_node('Manipulation')
+    rospy.init_node('manipulation')
 
     # Run required nodes as subprocesses
     Popen("roslaunch darknet_ros darknet_ros.launch", shell=True)
+    rospy.sleep(1)
     Popen("roslaunch ar_track_alvar fetch_indiv.launch", shell=True)
+    rospy.sleep(1)
     Popen("rosrun perception bb_vision", shell=True)
     rospy.sleep(1)
 
+    input("\nEnsure object can be seen. Press enter to continue.")
     # Create class and finde scene objects
     robot = RobotManipulation()
     (machine_location, bottleloc) = robot.plan.marker_locations()
@@ -49,10 +50,9 @@ def main():
     cup_location = robot.plan.find_cup_location()
 
     # Kill all vision nodes, ensuring enough processing power for movements
-    input("\nEnsure object can be seen. Press enter to continue.")
     os.system("rosnode kill /darknet_ros")
     os.system("rosnode kill /ar_track_alvar")
-    os.system("rosnode fill /bb_vision")
+    os.system("rosnode kill /vision")
     rospy.sleep(1)
 
     # Arm tuck if required
@@ -66,7 +66,7 @@ def main():
     cup_in_machine_pos = robot.move_to_machine(eef_pos)
 
     # 3. Push button
-    coffee_size = True # false = small, true=large
+    coffee_size = False # false = small, true=large
     robot.push_button(machine_location, coffee_size)
 
     # 4. Remove cup from machine
@@ -81,7 +81,7 @@ def main():
 class RobotManipulation(object):
     def __init__(self):
         self.arm = FetchArm()
-        self.plan = RobotPathPlanning()
+        self.plan = RobotPlanningScene()
         self.sound = FetchSound()
 
         # Commander planning config
@@ -268,9 +268,9 @@ class RobotManipulation(object):
 
         # Sleep to wait for coffee dispensing
         if coffee_size: #large
+            rospy.sleep(35)
+        else: #small
             rospy.sleep(10)
-        else:
-            rospy.sleep(5)
             
         # Approach
         self.arm.init_upright_constraint(10,"x")
@@ -324,6 +324,9 @@ class RobotManipulation(object):
         self.arm.cartesian_path(eef_pos[0],"x")
         self.plan.add_cup_object()
 
+        self.sound.talk("Please screw the lid on the cup...")
+        rospy.sleep(10)
+
         return cup_on_table_pos
 
     def get_milk(self):
@@ -349,7 +352,7 @@ class RobotManipulation(object):
 
         eef_pos[0] += APPROACH_DISTANCE*1.3
         self.arm.cartesian_path(eef_pos[0],'x')
-        rospy.sleep(2)
+        rospy.sleep(5)
 
         # Retreat milk
         eef_pos[0] -= APPROACH_DISTANCE*1.5
@@ -360,12 +363,13 @@ class RobotManipulation(object):
         """ Function to place cup on base for transport """
         self.arm.move_commander.clear_path_constraints()
         self.arm.move_commander.clear_pose_targets()
-
+        self.sound.talk("Placing cup in base holder now.")
         top_grasp_angle = [0,np.deg2rad(90),0]
         self.arm.gripper.open_gripper()
 
         # Pre-grasp approach
         eef_pos = cup_on_table_pos[:]
+        eef_pos[0]+=0.015
         eef_pos[2]=0.96 #NB: DEPENDANT ON CUP
         eef_pos[2]+=2*APPROACH_DISTANCE
         transport_grasp = Pose( Point(eef_pos[0], 
@@ -379,7 +383,7 @@ class RobotManipulation(object):
         self.sound.talk("Moving cup to base holder")
 
         # Grasp
-        self.arm.move_torso_relative(-APPROACH_DISTANCE*1.5)
+        self.arm.move_torso_relative(-APPROACH_DISTANCE*1.8)
         rospy.sleep(0.5)
         # Close Gripper
         self.arm.gripper.close_gripper(GRIPPER_ON_CUP)
@@ -392,7 +396,7 @@ class RobotManipulation(object):
 
         # Init orientation constraint
         self.arm.init_upright_constraint(10,"z")
-        self.sound.talk("Please wait while I plan my movemnts. I don't want to spill the coffee!")
+        self.sound.talk("Please wait while I plan my movemnts........ I don't want to spill the coffee!")
         
         # Pre-approach base
         eef_pos = cup_holder[:]
@@ -423,8 +427,9 @@ class RobotManipulation(object):
 
         # Tuck arm for transport
         self.arm.move_commander.clear_path_constraints()
+        rospy.sleep(1)
         self.arm.tuck_arm(True)
-        self.sound.talk("I am ready to deliver the coffeeeeee")
+        self.sound.talk("I am ready to deliver the coffeeeeee!")
 
 
 
