@@ -1,5 +1,5 @@
-# Manipulation and perception for Robot Barista FYP
-# Monash University - Nathan Gordon
+# Manipulation and perception for a Robot Barista 
+# Monash University Electrical and Copmuter System Engineering - Nathan Gordon
 
 To launch Rviz and Gazebo (NB: no GUI for Gazebo): `roslaunch manipulation manipulation_gazebo.launch`
 To launch Rviz whenusing actual Fetch robot: `roslaunch manipulation manipulation.launch`
